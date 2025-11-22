@@ -1,0 +1,648 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Partograf Digital API - Revisi</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { font-family: 'Arial', sans-serif; }
+        * { box-sizing: border-box; }
+
+        /* Grid Styling */
+        .grid-line { stroke: #000; stroke-width: 1; shape-rendering: crispEdges; }
+        .grid-line-thick { stroke: #000; stroke-width: 2; shape-rendering: crispEdges; } 
+        .grid-line-major { stroke: #000; stroke-width: 1.2; shape-rendering: crispEdges; } 
+        .grid-line-minor { stroke: #9ca3af; stroke-width: 0.8; shape-rendering: crispEdges; } 
+
+        /* Typography */
+        .label-axis { font-size: 10px; font-weight: bold; }
+        .label-waktu { font-size: 11px; font-weight: bold; }
+        .data-text { font-size: 13px; font-weight: bold; font-family: sans-serif; }
+        .handwritten {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            color: #1d4ed8;
+            font-weight: 700;
+        }
+
+        /* Layout */
+        .main-container {
+            width: 1100px; 
+            margin: 0 auto;
+            background: white;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            border: 1px solid #e5e7eb;
+        }
+        .chart-row { display: flex; width: 100%; }
+        .y-axis-col {
+            flex: none; width: 140px; border-right: 1px solid #000; 
+            background: white; z-index: 10; position: relative; 
+        }
+        .chart-area-col { flex: 1; position: relative; }
+        .header-label { font-weight: bold; color: #1f2937; white-space: nowrap; font-size: 13px; }
+        .header-input { border-bottom: 1px solid black; padding: 0 0.5rem; white-space: nowrap; font-size: 14px; }
+
+        /* Legend & Patterns */
+        .legend-box { width: 12px; height: 12px; border: 1px solid black; display: inline-block; vertical-align: middle; margin-right: 4px; }
+        
+        /* Loader */
+        #loading-screen {
+            position: fixed; inset: 0; background: rgba(255,255,255,0.9); 
+            display: flex; justify-content: center; align-items: center; z-index: 50;
+        }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen p-4 overflow-x-auto">
+
+    <div id="loading-screen">
+        <div class="text-center">
+            <div class="w-16 h-16 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+            <h2 class="text-xl font-bold text-gray-800">Memuat Data Partograf...</h2>
+            <p class="text-gray-500 text-sm mt-2">Menghubungkan ke API...</p>
+        </div>
+    </div>
+
+    <div id="error-screen" class="hidden fixed inset-0 bg-white z-50 flex justify-center items-center">
+        <div class="text-center max-w-md p-6 bg-red-50 border border-red-200 rounded-lg">
+            <h2 class="text-xl font-bold text-red-700 mb-2">Gagal Memuat Data</h2>
+            <p id="error-msg" class="text-red-600 text-sm"></p>
+        </div>
+    </div>
+
+    <div class="main-container hidden" id="content-container">
+        <div class="p-6 bg-white w-full border-b-2 border-black">
+            <div class="flex justify-center mb-6 relative">
+                <h1 class="text-2xl font-extrabold uppercase tracking-[0.2em]">PARTOGRAF</h1>
+            </div>
+            <div class="flex flex-col gap-4 text-sm w-full">
+                <div class="flex items-end w-full">
+                    <div class="flex items-center flex-none mr-8"><span class="header-label w-28">No. Registrasi</span><div class="flex border border-black" id="reg-box"></div></div>
+                    <div class="flex flex-1 items-end gap-4">
+                        <div class="flex items-end flex-1"><span class="header-label mr-2">Nama Ibu:</span><div class="flex-1 header-input handwritten" id="nama-val">-</div></div>
+                        <div class="flex items-end w-32 flex-none"><span class="header-label mr-2">Umur:</span><div class="flex-1 header-input handwritten text-center" id="umur-val">-</div></div>
+                        <div class="flex items-end gap-2 flex-none">
+                            <div class="flex items-end"><span class="header-label mr-1">G:</span><div class="border-b border-black w-8 handwritten text-center" id="g-val">-</div></div>
+                            <div class="flex items-end"><span class="header-label mr-1">P:</span><div class="border-b border-black w-8 handwritten text-center" id="p-val">-</div></div>
+                            <div class="flex items-end"><span class="header-label mr-1">A:</span><div class="border-b border-black w-8 handwritten text-center" id="a-val">-</div></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="flex items-end w-full">
+                    <div class="flex items-end flex-none mr-8 w-[350px]"><span class="header-label w-28">No. Puskesmas</span><div class="flex-1 header-input handwritten" id="puskesmas-val"></div></div>
+                    <div class="flex flex-1 items-end gap-4">
+                        <div class="flex items-end flex-1"><span class="header-label mr-2">Tanggal:</span><div class="flex-1 header-input handwritten" id="tanggal-val">-</div></div>
+                        <div class="flex items-end w-40 flex-none"><span class="header-label mr-2">Jam pemeriksaan:</span><div class="flex-1 header-input handwritten text-center" id="jam-val">-</div></div>
+                        <div class="w-[100px]"></div> 
+                    </div>
+                </div>
+                <div class="flex items-end w-full">
+                    <div class="flex items-end flex-none mr-8 w-[450px]"><span class="header-label w-28">Ketuban Pecah</span><span class="header-label mr-2">Sejak Jam:</span><div class="flex-1 header-input handwritten" id="ketuban-val">-</div></div>
+                    <div class="flex items-end flex-1"><span class="header-label mr-2">Mules Sejak Jam:</span><div class="flex-1 header-input handwritten" id="mules-val">-</div><div class="w-[100px]"></div></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="chart-row bg-white">
+            <div class="y-axis-col">
+                <div id="label-djj-area" class="relative border-b border-black w-full">
+                    <div class="absolute left-2 top-1/2 -translate-y-1/2 font-bold text-[10px] leading-tight">Denyut<br>Jantung<br>Janin<br>( /Menit)</div>
+                    <div id="y-axis-djj" class="absolute right-0 top-0 w-8 h-full pointer-events-none"></div>
+                </div>
+                <div id="label-middle-area" class="relative border-b border-black w-full flex flex-col font-bold text-[10px]">
+                    <div class="flex-1 flex items-center justify-end pr-2 border-b border-gray-300">Air Ketuban</div>
+                    <div class="flex-1 flex items-center justify-end pr-2">Penyusupan</div>
+                </div>
+                <div id="label-cervix-area" class="relative w-full border-b border-black">
+                    <div class="absolute -left-8 top-1/2 -translate-y-1/2 -rotate-90 font-bold text-[10px] text-center leading-tight w-64">
+                        Pembukaan Serviks (cm) beri tanda <span class="text-purple-700 text-lg">X</span><br>
+                        Turunnya Kepala beri tanda <span class="text-green-600 text-lg">O</span>
+                    </div>
+                    <div class="absolute -left-12 top-1/2 -translate-y-1/2 -rotate-90 text-[10px] font-bold text-center w-32">Sentimeter (cm)</div>
+                    <div class="absolute right-8 top-2 bottom-2 border-l-2 border-t-2 border-b-2 border-black w-2"></div>
+                    <div id="y-axis-cervix" class="absolute right-0 top-0 w-8 h-full pointer-events-none"></div>
+                </div>
+                 <div id="label-time-area" class="w-full flex flex-col justify-end items-end pr-2 pb-2 text-[10px] font-bold border-b border-black">
+                     <div class="h-[30px] flex items-center">Waktu (Jam)</div>
+                 </div>
+                 <div id="label-kontraksi-area" class="relative w-full border-b border-black flex">
+                    <div class="w-20 pl-2 flex flex-col justify-center gap-1 text-[9px] font-bold">
+                        <div class="mb-1">Kontraksi<br>tiap<br>10 menit</div>
+                        <div class="flex items-center"><div class="legend-box" style="background-image: radial-gradient(black 1px, transparent 1px); background-size: 3px 3px;"></div> < 20</div>
+                        <div class="flex items-center"><div class="legend-box" style="background: repeating-linear-gradient(45deg, white, white 2px, black 2px, black 3px);"></div> 20-40</div>
+                        <div class="flex items-center"><div class="legend-box bg-black"></div> > 40</div>
+                    </div>
+                    <div class="flex-1 flex flex-col justify-between items-end pr-2 py-0 font-bold text-[10px] relative" id="y-axis-kontraksi"></div>
+                 </div>
+                 <div id="label-obat-area" class="relative w-full border-b border-black flex items-center justify-end pr-2 text-[10px] font-bold leading-tight text-right">Obat dan<br>cairan IV</div>
+                 <div id="label-vitals-area" class="relative w-full border-b border-black flex">
+                     <div class="w-16 pl-2 flex flex-col justify-center gap-2 text-[10px] font-bold border-r border-transparent">
+                         <div class="flex items-center gap-1"><span class="text-lg leading-none">•</span> Nadi</div>
+                         <div class="flex items-center gap-1"><span class="text-base leading-none">↕</span> Tekanan<br>Darah</div>
+                     </div>
+                     <div class="flex-1 flex flex-col justify-between items-end pr-2 py-0 font-bold text-[10px] relative" id="y-axis-vitals"></div>
+                 </div>
+                 <div id="label-suhu-area" class="relative w-full border-b border-black flex items-center justify-end pr-2 text-[10px] font-bold">Suhu °C</div>
+                 <div id="label-urine-area" class="relative w-full flex flex-col font-bold text-[10px]">
+                     <div class="flex-1 flex items-center justify-end pr-2 relative"><span class="absolute left-2 top-1/2 -translate-y-1/2">Urine</span>Protein</div>
+                     <div class="flex-1 flex items-center justify-end pr-2 border-t border-gray-300">Aseton</div>
+                     <div class="flex-1 flex items-center justify-end pr-2 border-t border-gray-300">Volume</div>
+                 </div>
+            </div>
+
+            <div class="chart-area-col">
+                <div id="chart-svg-container" class="w-full h-full"></div>
+            </div>
+        </div>
+        
+        <div class="bg-gray-50 p-3 border-t border-gray-200 text-center text-xs text-gray-500">
+            Partograf Digital API v1.1 (Revisi Raw Date)
+        </div>
+    </div>
+
+    <script>
+        // --- 1. KONFIGURASI TAMPILAN (VIEW) ---
+        const TOTAL_CONTAINER_WIDTH = 1100;
+        const LEFT_LABEL_WIDTH = 140;
+        const CHART_AREA_WIDTH = TOTAL_CONTAINER_WIDTH - LEFT_LABEL_WIDTH; 
+        const COLS = 16;
+        const COL_W = CHART_AREA_WIDTH / COLS; 
+        const UNIT_W = COL_W / 2; 
+        const UNIT_H = 30; 
+        const TOP_MARGIN = 15;
+        
+        const DJJ_STEPS = 12; const DJJ_H = DJJ_STEPS * UNIT_H; 
+        const MID_ROWS = 2; const MID_H = MID_ROWS * UNIT_H;
+        const CER_ROWS = 10; const CER_H = CER_ROWS * UNIT_H;
+        const TIME_H = 65;
+        const KONTRAKSI_ROWS = 5; const KONTRAKSI_H = KONTRAKSI_ROWS * UNIT_H;
+        const OBAT_H = 80; 
+        const VITALS_STEPS = 12; const VITALS_H = VITALS_STEPS * UNIT_H;
+        const SUHU_H = UNIT_H; 
+        const URINE_ROWS = 3; const URINE_H = URINE_ROWS * UNIT_H;
+        const TOTAL_H = TOP_MARGIN + DJJ_H + MID_H + CER_H + TIME_H + KONTRAKSI_H + OBAT_H + VITALS_H + SUHU_H + URINE_H;
+
+        const setH = (id, val) => document.getElementById(id).style.height = `${val}px`;
+        setH('label-djj-area', DJJ_H + TOP_MARGIN);
+        setH('label-middle-area', MID_H);
+        setH('label-cervix-area', CER_H);
+        setH('label-time-area', TIME_H);
+        setH('label-kontraksi-area', KONTRAKSI_H);
+        setH('label-obat-area', OBAT_H);
+        setH('label-vitals-area', VITALS_H);
+        setH('label-suhu-area', SUHU_H);
+        setH('label-urine-area', URINE_H);
+
+        // --- 2. LOGIKA API & DATA PROCESSING ---
+        
+        // State Data Kosong
+        let processedData = {
+            pasien: {},
+            djj: [],
+            nadi: [],
+            kontraksi: [],
+            bp: [],
+            pembukaan: [],
+            penurunan: [],
+            ketuban: [],
+            penyusupan: [],
+            suhu: [],
+            urine: [],
+            waktuLabels: {}
+        };
+
+        // Fungsi Ambil Param URL
+        function getQueryParams() {
+            const params = new URLSearchParams(window.location.search);
+            return {
+                token: params.get('token'),
+                no_reg: params.get('no_reg'),
+                partograf_id: params.get('partograf_id')
+            };
+        }
+
+        // Fungsi Fetch Data
+        async function fetchData() {
+            const { token, no_reg, partograf_id } = getQueryParams();
+
+            if (!token || !no_reg || !partograf_id) {
+                showError("Parameter URL tidak lengkap. Harap sertakan ?token=...&no_reg=...&partograf_id=...");
+                return;
+            }
+
+            const headers = { 
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            };
+
+            try {
+                // 1. Fetch Pasien
+                const pasienRes = await fetch(`https://restful-api-bmc-production.up.railway.app/api/pasien/${no_reg}/getData`, { headers });
+                if (!pasienRes.ok) throw new Error("Gagal mengambil data pasien");
+                const pasienJson = await pasienRes.json();
+
+                // 2. Fetch Partograf Catatan
+                const partografRes = await fetch(`https://restful-api-bmc-production.up.railway.app/api/partograf/${partograf_id}/catatan`, { headers });
+                if (!partografRes.ok) throw new Error("Gagal mengambil catatan partograf");
+                const partografJson = await partografRes.json();
+
+                // 3. Process Data
+                processApiData(pasienJson.data, partografJson.data);
+                
+                // 4. Render
+                // ✅ BENAR (Pasti menang, loading langsung hilang)
+                document.getElementById('loading-screen').style.display = 'none';
+                document.getElementById('content-container').classList.remove('hidden');
+                renderInfo();
+                renderChart();
+
+            } catch (err) {
+                showError(err.message);
+            }
+        }
+
+        function showError(msg) {
+            document.getElementById('loading-screen').classList.add('hidden');
+            document.getElementById('error-screen').classList.remove('hidden');
+            document.getElementById('error-msg').innerText = msg;
+        }
+
+        // Fungsi Penting: Mapping Data API ke Format Grafik (REVISI)
+        // Fungsi Penting: Mapping Data API ke Format Grafik (FIXED)
+        function processApiData(pasien, catatanList) {
+            // A. Data Pasien
+            const persalinan = pasien.persalinan[0] || {}; 
+            
+            // HELPER: Format Raw String (Aman dari error substring)
+            // Input: "2025-11-22T15:30:00.000000Z" -> Output: { date: "22 November 2025", time: "15:30" }
+            const formatRawDateTime = (isoString) => {
+                if (!isoString) return { date: '-', time: '-' };
+                try {
+                    // Cek apakah ada separator 'T' atau spasi
+                    let separator = 'T';
+                    if (isoString.indexOf('T') === -1) separator = ' '; // Fallback jika format "YYYY-MM-DD HH:MM:SS"
+                    
+                    const parts = isoString.split(separator);
+                    const datePart = parts[0]; 
+                    
+                    // SAFE CHECK: Pastikan parts[1] ada sebelum di-substring
+                    const timePart = (parts.length > 1 && parts[1]) ? parts[1].substring(0, 5) : '00:00';
+
+                    // Format Tanggal ke Nama Bulan Indonesia
+                    const [y, m, d] = datePart.split('-');
+                    const monthNames = [
+                        "Januari", "Februari", "Maret", "April", "Mei", "Juni", 
+                        "Juli", "Agustus", "September", "Oktober", "November", "Desember"
+                    ];
+                    
+                    // Validasi tanggal agar tidak error jika data kosong/rusak
+                    let formattedDate = datePart;
+                    if (y && m && d) {
+                        formattedDate = `${d} ${monthNames[parseInt(m) - 1]} ${y}`;
+                    }
+
+                    return { date: formattedDate, time: timePart };
+                } catch (e) {
+                    console.error("Error parsing date:", isoString, e);
+                    return { date: '-', time: '-' };
+                }
+            };
+
+            // 1. Proses Tanggal & Jam Rawat (Masuk)
+            const rawatData = formatRawDateTime(persalinan.tanggal_jam_rawat);
+            
+            // 2. Proses Jam Mules
+            const mulesData = formatRawDateTime(persalinan.tanggal_jam_mules);
+
+            // 3. Proses Ketuban
+            let ketubanDisplay = "-";
+            if (persalinan.ketuban_pecah === false) {
+                ketubanDisplay = "Belum Pecah";
+            } else if (persalinan.ketuban_pecah === true && persalinan.tanggal_jam_ketuban_pecah) {
+                ketubanDisplay = formatRawDateTime(persalinan.tanggal_jam_ketuban_pecah).time;
+            }
+
+            processedData.pasien = {
+                noRegistrasi: pasien.no_reg, 
+                nama: pasien.nama,
+                umur: `${pasien.umur} th`,
+                g: pasien.gravida,
+                p: pasien.paritas,
+                a: pasien.abortus,
+                tanggal: rawatData.date,
+                jam: rawatData.time,
+                ketuban: ketubanDisplay,
+                mules: mulesData.time
+            };
+
+            // B. Data Grafik (Catatan)
+            // Validasi: Jika catatanList null/undefined, buat array kosong
+            if (!catatanList) catatanList = [];
+
+            catatanList.sort((a, b) => new Date(a.waktu_catat) - new Date(b.waktu_catat));
+
+            let startTime = null;
+            const activePhaseEntry = catatanList.find(c => c.pembukaan_servik >= 4);
+            if (activePhaseEntry) {
+                startTime = new Date(activePhaseEntry.waktu_catat);
+            } else if (catatanList.length > 0) {
+                startTime = new Date(catatanList[0].waktu_catat);
+            } else {
+                renderInfo();
+                return; 
+            }
+
+            let initialOpening = activePhaseEntry ? activePhaseEntry.pembukaan_servik : 4;
+            let initialXOffset = Math.max(0, initialOpening - 4); 
+            
+            catatanList.forEach(c => {
+                if (!c.waktu_catat) return; // Skip jika tidak ada waktu
+
+                const currTime = new Date(c.waktu_catat);
+                const diffMs = currTime - startTime;
+                const diffHours = diffMs / (1000 * 60 * 60);
+                
+                const chartIndex = initialXOffset + diffHours;
+
+                // --- BAGIAN YANG SEBELUMNYA ERROR ---
+                // Sekarang menggunakan helper function yang aman
+                if (Math.abs(chartIndex - Math.round(chartIndex)) < 0.1) {
+                    const safeTime = formatRawDateTime(c.waktu_catat).time; // AMAN
+                    processedData.waktuLabels[Math.round(chartIndex)] = safeTime;
+                }
+
+                // Mapping Data
+                if (c.djj) processedData.djj.push({ i: chartIndex, v: c.djj });
+                if (c.pembukaan_servik) processedData.pembukaan.push({ i: chartIndex, v: c.pembukaan_servik });
+                if (c.penurunan_kepala) processedData.penurunan.push({ i: chartIndex, v: c.penurunan_kepala });
+                if (c.nadi_ibu) processedData.nadi.push({ i: chartIndex, v: c.nadi_ibu });
+                if (c.sistolik && c.diastolik) processedData.bp.push({ i: chartIndex, s: c.sistolik, d: c.diastolik });
+                if (c.suhu_ibu) processedData.suhu.push({ i: chartIndex, v: c.suhu_ibu });
+                if (c.air_ketuban) processedData.ketuban.push({ i: chartIndex, val: c.air_ketuban });
+                if (c.molase) processedData.penyusupan.push({ i: chartIndex, val: c.molase });
+                if (c.protein) processedData.urine.push({ i: chartIndex, type: 'protein', val: c.protein });
+                if (c.aseton) processedData.urine.push({ i: chartIndex, type: 'aseton', val: c.aseton });
+                if (c.volume_urine) processedData.urine.push({ i: chartIndex, type: 'volume', val: c.volume_urine });
+
+                if (c.kontraksi && c.kontraksi.length > 0) {
+                    const frekuensi = c.kontraksi.length;
+                    let maxDur = 0;
+                    c.kontraksi.forEach(k => {
+                        const start = new Date(k.waktu_mulai);
+                        const end = new Date(k.waktu_selesai);
+                        const dur = (end - start) / 1000; 
+                        if (dur > maxDur) maxDur = dur;
+                    });
+                    processedData.kontraksi.push({ i: chartIndex, f: frekuensi, d: maxDur });
+                }
+            });
+        }
+
+        // --- 3. RENDER FUNCTIONS ---
+        function renderInfo() {
+            const p = processedData.pasien;
+            if (!p.noRegistrasi) return; // Belum ada data
+
+            // Reg Box (7 kotak)
+            const regBox = document.getElementById('reg-box');
+            const finalReg = Array(7).fill('');
+            (p.noRegistrasi || "").toString().split('').forEach((c, i) => { if(i < 7) finalReg[i] = c; });
+            regBox.innerHTML = ''; // Reset
+            finalReg.forEach(char => { regBox.innerHTML += `<div class="w-6 h-6 flex items-center justify-center border-r border-black last:border-r-0 bg-gray-50 font-bold text-base">${char}</div>`; });
+
+            document.getElementById('nama-val').innerText = p.nama;
+            document.getElementById('umur-val').innerText = p.umur;
+            document.getElementById('g-val').innerText = p.g;
+            document.getElementById('p-val').innerText = p.p;
+            document.getElementById('a-val').innerText = p.a;
+            document.getElementById('tanggal-val').innerText = p.tanggal;
+            document.getElementById('jam-val').innerText = p.jam;
+            document.getElementById('ketuban-val').innerText = p.ketuban;
+            document.getElementById('mules-val').innerText = p.mules;
+
+            // Render Static Labels Y-Axis
+            const drawLabels = (id, start, steps, stepVal, offset = 0) => {
+                let html = '';
+                for(let i=0; i<=steps; i++) {
+                    let val = start - (i*stepVal);
+                    let topPos = offset + (i * UNIT_H);
+                    html += `<div class="absolute right-1 font-bold flex items-center justify-end w-full h-4 leading-none text-[10px]" style="top:${topPos}px; transform: translateY(-50%);">${val}</div>`;
+                }
+                document.getElementById(id).innerHTML = html;
+            };
+            drawLabels('y-axis-djj', 200, 12, 10, TOP_MARGIN);
+            drawLabels('y-axis-cervix', 10, 10, 1, 0);
+            drawLabels('y-axis-vitals', 180, 12, 10, 0);
+            
+            let konHtml = '';
+            for(let i=0; i<5; i++) { 
+                let val = 5 - i;
+                let topPos = i * UNIT_H; 
+                konHtml += `<div class="absolute right-1 font-bold flex items-center justify-end w-full h-4 leading-none text-[10px]" style="top:${topPos}px; transform: translateY(-50%);">${val}</div>`;
+            }
+            document.getElementById('y-axis-kontraksi').innerHTML = konHtml;
+        }
+
+        function renderChart() {
+            const d = processedData;
+            let svg = `<svg width="${CHART_AREA_WIDTH}" height="${TOTAL_H + 50}" class="block" style="width:100%;">
+                <defs>
+                    <pattern id="stripes" patternUnits="userSpaceOnUse" width="4" height="4" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="4" stroke="#000" stroke-width="1" /></pattern>
+                    <pattern id="dots" patternUnits="userSpaceOnUse" width="3" height="3"><circle cx="1.5" cy="1.5" r="0.8" fill="#000" /></pattern>
+                </defs>`;
+            
+            let currentY = TOP_MARGIN;
+
+            // 1. DJJ
+            for(let i=0; i<=DJJ_STEPS; i++) {
+                let val = 200 - (i*10);
+                let y = currentY + (i * UNIT_H);
+                let cls = (val === 180 || val === 100) ? 'grid-line-thick' : 'grid-line';
+                svg += `<line x1="0" y1="${y}" x2="${CHART_AREA_WIDTH}" y2="${y}" class="${cls}" />`;
+            }
+            let djjPoints = "";
+            d.djj.forEach(item => {
+                let x = item.i * COL_W; 
+                let y = currentY + ((200 - item.v) / 10) * UNIT_H;
+                djjPoints += `${x},${y} `;
+                svg += `<circle cx="${x}" cy="${y}" r="3" fill="#2563eb" />`;
+            });
+            if (djjPoints) svg += `<polyline points="${djjPoints}" fill="none" stroke="#2563eb" stroke-width="2" />`;
+            currentY += DJJ_H;
+
+            // 2. TENGAH
+            svg += `<line x1="0" y1="${currentY}" x2="${CHART_AREA_WIDTH}" y2="${currentY}" class="grid-line-thick" />`;
+            for(let i=1; i<=MID_ROWS; i++) {
+                let y = currentY + (i * UNIT_H);
+                svg += `<line x1="0" y1="${y}" x2="${CHART_AREA_WIDTH}" y2="${y}" class="grid-line" />`;
+            }
+            // Render Ketuban & Penyusupan
+            d.ketuban.forEach(item => {
+                let x = (item.i * COL_W) + (UNIT_W/2);
+                svg += `<text x="${x}" y="${currentY + (UNIT_H/2) + 4}" text-anchor="middle" class="data-text text-blue-800">${item.val}</text>`;
+            });
+            d.penyusupan.forEach(item => {
+                let x = (item.i * COL_W) + (UNIT_W/2);
+                svg += `<text x="${x}" y="${currentY + UNIT_H + (UNIT_H/2) + 4}" text-anchor="middle" class="data-text text-blue-800">${item.val}</text>`;
+            });
+            currentY += MID_H;
+
+            // 3. SERVIKS
+            svg += `<line x1="0" y1="${currentY}" x2="${CHART_AREA_WIDTH}" y2="${currentY}" class="grid-line-thick" />`;
+            for(let i=1; i<=CER_ROWS; i++) {
+                let y = currentY + (i * UNIT_H);
+                svg += `<line x1="0" y1="${y}" x2="${CHART_AREA_WIDTH}" y2="${y}" class="grid-line" />`;
+            }
+            const getCX = (h) => h * COL_W;
+            const getCY = (cm) => currentY + ((10 - cm) * UNIT_H);
+            svg += `<line x1="${getCX(0)}" y1="${getCY(4)}" x2="${getCX(6)}" y2="${getCY(10)}" stroke="#eab308" stroke-width="2" />`;
+            svg += `<text x="${getCX(2)}" y="${getCY(5.8)}" font-size="10" font-weight="bold" fill="#ca8a04" transform="rotate(-26 ${getCX(2)} ${getCY(5.8)})">WASPADA</text>`;
+            svg += `<line x1="${getCX(3.5)}" y1="${getCY(4)}" x2="${getCX(9.5)}" y2="${getCY(10)}" stroke="#dc2626" stroke-width="2" />`;
+            svg += `<text x="${getCX(5.5)}" y="${getCY(5.8)}" font-size="10" font-weight="bold" fill="#dc2626" transform="rotate(-26 ${getCX(5.5)} ${getCY(5.8)})">BERTINDAK</text>`;
+            
+            // Pembukaan (Polyline)
+            let pembukaanPts = "";
+            d.pembukaan.forEach(item => {
+                let x = item.i * COL_W; let y = getCY(item.v);
+                pembukaanPts += `${x},${y} `;
+                svg += `<g transform="translate(${x}, ${y})"><line x1="-6" y1="-6" x2="6" y2="6" stroke="purple" stroke-width="3" /><line x1="6" y1="-6" x2="-6" y2="6" stroke="purple" stroke-width="3" /></g>`;
+            });
+            if (pembukaanPts) svg += `<polyline points="${pembukaanPts}" fill="none" stroke="purple" stroke-width="2" />`;
+
+            // Penurunan (Polyline)
+            let penurunanPts = "";
+            d.penurunan.forEach(item => {
+                let x = item.i * COL_W; let y = getCY(item.v);
+                penurunanPts += `${x},${y} `;
+                svg += `<circle cx="${x}" cy="${y}" r="5" fill="none" stroke="green" stroke-width="3" />`;
+            });
+            if (penurunanPts) svg += `<polyline points="${penurunanPts}" fill="none" stroke="green" stroke-width="2" stroke-dasharray="4" />`;
+            currentY += CER_H;
+
+            // 4. WAKTU & GRID
+            let timeBottomY = currentY + TIME_H; 
+            for(let i=0; i<=COLS; i++) {
+                let x = i * COL_W;
+                svg += `<line x1="${x}" y1="${TOP_MARGIN}" x2="${x}" y2="${timeBottomY}" class="grid-line-major" />`;
+                if(i < COLS) {
+                    let xHalf = x + UNIT_W;
+                    svg += `<line x1="${xHalf}" y1="${TOP_MARGIN}" x2="${xHalf}" y2="${timeBottomY}" class="grid-line-minor" />`;
+                    let boxY = currentY; 
+                    svg += `<rect x="${x}" y="${boxY}" width="${COL_W}" height="30" fill="white" stroke="black" stroke-width="1"/>`;
+                    svg += `<rect x="${x}" y="${boxY + 30}" width="${COL_W}" height="30" fill="white" stroke="black" stroke-width="1"/>`;
+                }
+            }
+            // Jam Labels (Loop dari Object processedData)
+            for (const [idxStr, val] of Object.entries(d.waktuLabels)) {
+                let idx = parseFloat(idxStr);
+                let tX = (idx * COL_W) + (COL_W/2); 
+                svg += `<text x="${tX}" y="${currentY + 30 + 19}" text-anchor="middle" class="label-waktu text-blue-800">${val}</text>`;
+            }
+            // Nomor Jam (1, 2, 3...)
+            for(let i=0; i<COLS; i++) {
+               svg += `<text x="${(i * COL_W) + (COL_W/2)}" y="${currentY + 19}" text-anchor="middle" class="label-waktu">${i+1}</text>`;
+            }
+            currentY += TIME_H; 
+
+            // 5. KONTRAKSI
+            for(let i=0; i<=KONTRAKSI_ROWS; i++) {
+                let y = currentY + (i * UNIT_H);
+                svg += `<line x1="0" y1="${y}" x2="${CHART_AREA_WIDTH}" y2="${y}" class="grid-line" />`;
+            }
+            for(let i=0; i<=COLS; i++) {
+                let x = i * COL_W;
+                svg += `<line x1="${x}" y1="${currentY}" x2="${x}" y2="${currentY + KONTRAKSI_H}" class="grid-line-major" />`;
+                if(i < COLS) {
+                    let xHalf = x + UNIT_W;
+                    svg += `<line x1="${xHalf}" y1="${currentY}" x2="${xHalf}" y2="${currentY + KONTRAKSI_H}" class="grid-line-minor" />`;
+                }
+            }
+            d.kontraksi.forEach(item => {
+                let kX = item.i * COL_W; 
+                let kW = UNIT_W; 
+                let kH = item.f * UNIT_H;
+                let kY = (currentY + KONTRAKSI_H) - kH;
+                let fill = item.d < 20 ? 'url(#dots)' : (item.d <= 40 ? 'url(#stripes)' : 'black');
+                svg += `<rect x="${kX}" y="${kY}" width="${kW}" height="${kH}" fill="${fill}" stroke="black" />`;
+            });
+            currentY += KONTRAKSI_H;
+
+            // 6. OBAT
+            svg += `<line x1="0" y1="${currentY}" x2="${CHART_AREA_WIDTH}" y2="${currentY}" class="grid-line-thick" />`;
+            svg += `<line x1="0" y1="${currentY + OBAT_H}" x2="${CHART_AREA_WIDTH}" y2="${currentY + OBAT_H}" class="grid-line" />`;
+            for(let i=0; i<=COLS; i++) {
+                let x = i * COL_W;
+                svg += `<line x1="${x}" y1="${currentY}" x2="${x}" y2="${currentY + OBAT_H}" class="grid-line-major" />`;
+            }
+            currentY += OBAT_H;
+
+            // 7. VITAL SIGNS
+            for(let i=0; i<=VITALS_STEPS; i++) {
+                let val = 180 - (i*10);
+                let y = currentY + (i * UNIT_H);
+                let cls = (val === 100 || val === 180) ? 'grid-line-thick' : 'grid-line';
+                svg += `<line x1="0" y1="${y}" x2="${CHART_AREA_WIDTH}" y2="${y}" class="grid-line" />`;
+            }
+            let vitalsBottom = currentY + VITALS_H;
+            for(let i=0; i<=COLS; i++) {
+                let x = i * COL_W;
+                svg += `<line x1="${x}" y1="${currentY}" x2="${x}" y2="${vitalsBottom}" class="grid-line-major" />`;
+                if(i < COLS) {
+                    let xHalf = x + UNIT_W;
+                    svg += `<line x1="${xHalf}" y1="${currentY}" x2="${xHalf}" y2="${vitalsBottom}" class="grid-line-minor" />`;
+                }
+            }
+            // BP
+            d.bp.forEach(item => {
+                let x = item.i * COL_W;
+                let sysY = currentY + ((180 - item.s) / 10) * UNIT_H;
+                let diaY = currentY + ((180 - item.d) / 10) * UNIT_H;
+                svg += `<line x1="${x}" y1="${sysY}" x2="${x}" y2="${diaY}" stroke="blue" stroke-width="2" />`;
+                svg += `<path d="M${x-4},${sysY+6} L${x},${sysY} L${x+4},${sysY+6}" fill="none" stroke="blue" stroke-width="2" />`;
+                svg += `<path d="M${x-4},${diaY-6} L${x},${diaY} L${x+4},${diaY-6}" fill="none" stroke="blue" stroke-width="2" />`;
+            });
+            // Nadi
+            let nadiPts = "";
+            d.nadi.forEach(item => {
+                let x = item.i * COL_W;
+                let y = currentY + ((180 - item.v) / 10) * UNIT_H;
+                nadiPts += `${x},${y} `;
+                svg += `<circle cx="${x}" cy="${y}" r="3" fill="black" />`;
+            });
+            if (nadiPts) svg += `<polyline points="${nadiPts.trim()}" fill="none" stroke="black" stroke-width="1.5" />`;
+            currentY += VITALS_H;
+
+            // 8. SUHU & 9. URINE
+            let totalBottomH = SUHU_H + (URINE_ROWS * UNIT_H);
+            svg += `<line x1="0" y1="${currentY}" x2="${CHART_AREA_WIDTH}" y2="${currentY}" class="grid-line-thick" />`;
+            for(let i=0; i<=COLS; i++) {
+                let x = i * COL_W;
+                svg += `<line x1="${x}" y1="${currentY}" x2="${x}" y2="${currentY + totalBottomH}" class="grid-line-major" />`;
+            }
+            // Horizontal Lines
+            for(let i=1; i<= (1 + URINE_ROWS); i++) {
+                let y = currentY + (i * UNIT_H);
+                svg += `<line x1="0" y1="${y}" x2="${CHART_AREA_WIDTH}" y2="${y}" class="grid-line" />`;
+            }
+            // Data
+            d.suhu.forEach(item => {
+                let x = (item.i * COL_W) + (COL_W / 2);
+                svg += `<text x="${x}" y="${currentY + (UNIT_H/2) + 4}" text-anchor="middle" class="data-text text-blue-800">${item.v}</text>`;
+            });
+            d.urine.forEach(item => {
+                let uY = currentY + SUHU_H;
+                let x = (item.i * COL_W) + (COL_W / 2);
+                if (item.type === 'protein') svg += `<text x="${x}" y="${uY + (0.5 * UNIT_H) + 4}" text-anchor="middle" class="data-text text-blue-800">${item.val}</text>`;
+                if (item.type === 'aseton') svg += `<text x="${x}" y="${uY + (1.5 * UNIT_H) + 4}" text-anchor="middle" class="data-text text-blue-800">${item.val}</text>`;
+                if (item.type === 'volume') svg += `<text x="${x}" y="${uY + (2.5 * UNIT_H) + 4}" text-anchor="middle" class="data-text text-blue-800">${item.val}</text>`;
+            });
+
+            svg += `</svg>`;
+            document.getElementById('chart-svg-container').innerHTML = svg;
+        }
+
+        // START
+        fetchData();
+
+    </script>
+</body>
+</html>
