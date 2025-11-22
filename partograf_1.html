@@ -309,16 +309,22 @@
 
             // 1. Proses Tanggal & Jam Rawat (Masuk)
             const rawatData = formatRawDateTime(persalinan.tanggal_jam_rawat);
+
+            const jamMasukDisplay = rawatData.time !== '-' ? `${rawatData.time} WIB` : '-';
             
             // 2. Proses Jam Mules
             const mulesData = formatRawDateTime(persalinan.tanggal_jam_mules);
+
+            const jamMulesDisplay = mulesData.time !== '-' ? `${mulesData.time} WIB` : '-';
 
             // 3. Proses Ketuban
             let ketubanDisplay = "-";
             if (persalinan.ketuban_pecah === false) {
                 ketubanDisplay = "Belum Pecah";
             } else if (persalinan.ketuban_pecah === true && persalinan.tanggal_jam_ketuban_pecah) {
-                ketubanDisplay = formatRawDateTime(persalinan.tanggal_jam_ketuban_pecah).time;
+                const kRaw = formatRawDateTime(persalinan.tanggal_jam_ketuban_pecah).time;
+                // --- LOGIC BARU DISINI ---
+                ketubanDisplay = kRaw !== '-' ? `${kRaw} WIB` : '-';
             }
 
             processedData.pasien = {
@@ -329,9 +335,9 @@
                 p: pasien.paritas,
                 a: pasien.abortus,
                 tanggal: rawatData.date,
-                jam: rawatData.time,
-                ketuban: ketubanDisplay,
-                mules: mulesData.time
+                jam: jamMasukDisplay,      // Menggunakan variabel yang sudah ada WIB
+                ketuban: ketubanDisplay,   // Menggunakan variabel yang sudah ada WIB
+                mules: jamMulesDisplay    // Menggunakan variabel yang sudah ada WIB
             };
 
             // B. Data Grafik (Catatan)
