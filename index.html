@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Partograf Digital API - Revisi</title>
+    <title>Partograf Digital API - Revisi Status Lahir</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         body { font-family: 'Arial', sans-serif; }
@@ -19,9 +19,11 @@
         .label-axis { font-size: 10px; font-weight: bold; }
         .label-waktu { font-size: 11px; font-weight: bold; }
         .data-text { font-size: 13px; font-weight: bold; font-family: sans-serif; }
+        
+        /* Font tulisan tangan untuk data input & hasil lahir */
         .handwritten {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            color: #1d4ed8;
+            color: #1d4ed8; /* Blue-700 */
             font-weight: 700;
         }
 
@@ -155,7 +157,7 @@
         </div>
         
         <div class="bg-gray-50 p-3 border-t border-gray-200 text-center text-xs text-gray-500">
-            Partograf Digital API v1.1 (Revisi Raw Date)
+            Partograf Digital API v1.2 (Fitur Waktu Lahir)
         </div>
     </div>
 
@@ -207,10 +209,11 @@
             penyusupan: [],
             suhu: [],
             urine: [],
-            waktuLabels: {}
+            waktuLabels: {},
+            // BARU: Menyimpan info lahir
+            infoLahir: null 
         };
 
-        // Fungsi Ambil Param URL
         function getQueryParams() {
             const params = new URLSearchParams(window.location.search);
             return {
@@ -220,7 +223,6 @@
             };
         }
 
-        // Fungsi Fetch Data
         async function fetchData() {
             const { token, no_reg, partograf_id } = getQueryParams();
 
@@ -249,7 +251,6 @@
                 processApiData(pasienJson.data, partografJson.data);
                 
                 // 4. Render
-                // ✅ BENAR (Pasti menang, loading langsung hilang)
                 document.getElementById('loading-screen').style.display = 'none';
                 document.getElementById('content-container').classList.remove('hidden');
                 renderInfo();
@@ -266,35 +267,25 @@
             document.getElementById('error-msg').innerText = msg;
         }
 
-        // Fungsi Penting: Mapping Data API ke Format Grafik (REVISI)
-        // Fungsi Penting: Mapping Data API ke Format Grafik (FIXED)
         function processApiData(pasien, catatanList) {
-            // A. Data Pasien
             const persalinan = pasien.persalinan[0] || {}; 
             
-            // HELPER: Format Raw String (Aman dari error substring)
-            // Input: "2025-11-22T15:30:00.000000Z" -> Output: { date: "22 November 2025", time: "15:30" }
             const formatRawDateTime = (isoString) => {
                 if (!isoString) return { date: '-', time: '-' };
                 try {
-                    // Cek apakah ada separator 'T' atau spasi
                     let separator = 'T';
-                    if (isoString.indexOf('T') === -1) separator = ' '; // Fallback jika format "YYYY-MM-DD HH:MM:SS"
+                    if (isoString.indexOf('T') === -1) separator = ' '; 
                     
                     const parts = isoString.split(separator);
                     const datePart = parts[0]; 
-                    
-                    // SAFE CHECK: Pastikan parts[1] ada sebelum di-substring
                     const timePart = (parts.length > 1 && parts[1]) ? parts[1].substring(0, 5) : '00:00';
 
-                    // Format Tanggal ke Nama Bulan Indonesia
                     const [y, m, d] = datePart.split('-');
                     const monthNames = [
                         "Januari", "Februari", "Maret", "April", "Mei", "Juni", 
                         "Juli", "Agustus", "September", "Oktober", "November", "Desember"
                     ];
                     
-                    // Validasi tanggal agar tidak error jika data kosong/rusak
                     let formattedDate = datePart;
                     if (y && m && d) {
                         formattedDate = `${d} ${monthNames[parseInt(m) - 1]} ${y}`;
@@ -307,23 +298,16 @@
                 }
             };
 
-            // 1. Proses Tanggal & Jam Rawat (Masuk)
             const rawatData = formatRawDateTime(persalinan.tanggal_jam_rawat);
-
             const jamMasukDisplay = rawatData.time !== '-' ? `${rawatData.time} WIB` : '-';
-            
-            // 2. Proses Jam Mules
             const mulesData = formatRawDateTime(persalinan.tanggal_jam_mules);
-
             const jamMulesDisplay = mulesData.time !== '-' ? `${mulesData.time} WIB` : '-';
 
-            // 3. Proses Ketuban
             let ketubanDisplay = "-";
             if (persalinan.ketuban_pecah === false) {
                 ketubanDisplay = "Belum Pecah";
             } else if (persalinan.ketuban_pecah === true && persalinan.tanggal_jam_ketuban_pecah) {
                 const kRaw = formatRawDateTime(persalinan.tanggal_jam_ketuban_pecah).time;
-                // --- LOGIC BARU DISINI ---
                 ketubanDisplay = kRaw !== '-' ? `${kRaw} WIB` : '-';
             }
 
@@ -335,15 +319,20 @@
                 p: pasien.paritas,
                 a: pasien.abortus,
                 tanggal: rawatData.date,
-                jam: jamMasukDisplay,      // Menggunakan variabel yang sudah ada WIB
-                ketuban: ketubanDisplay,   // Menggunakan variabel yang sudah ada WIB
-                mules: jamMulesDisplay    // Menggunakan variabel yang sudah ada WIB
+                jam: jamMasukDisplay,
+                ketuban: ketubanDisplay,
+                mules: jamMulesDisplay
             };
 
-            // B. Data Grafik (Catatan)
-            // Validasi: Jika catatanList null/undefined, buat array kosong
-            if (!catatanList) catatanList = [];
+            // --- LOGIKA BARU: Cek Status Selesai & Jam Lahir ---
+            if (persalinan.status === 'selesai' && persalinan.tanggal_jam_waktu_bayi_lahir) {
+                const lahirInfo = formatRawDateTime(persalinan.tanggal_jam_waktu_bayi_lahir);
+                // Buat kalimat hasil, contoh: "Tanggal 28 November 2025 pukul 23:00 WIB bayi lahir."
+                processedData.infoLahir = `Tanggal ${lahirInfo.date} pukul ${lahirInfo.time} WIB bayi lahir.`;
+            }
 
+            // B. Data Grafik (Catatan)
+            if (!catatanList) catatanList = [];
             catatanList.sort((a, b) => new Date(a.waktu_catat) - new Date(b.waktu_catat));
 
             let startTime = null;
@@ -361,7 +350,7 @@
             let initialXOffset = Math.max(0, initialOpening - 4); 
             
             catatanList.forEach(c => {
-                if (!c.waktu_catat) return; // Skip jika tidak ada waktu
+                if (!c.waktu_catat) return;
 
                 const currTime = new Date(c.waktu_catat);
                 const diffMs = currTime - startTime;
@@ -369,14 +358,11 @@
                 
                 const chartIndex = initialXOffset + diffHours;
 
-                // --- BAGIAN YANG SEBELUMNYA ERROR ---
-                // Sekarang menggunakan helper function yang aman
                 if (Math.abs(chartIndex - Math.round(chartIndex)) < 0.1) {
-                    const safeTime = formatRawDateTime(c.waktu_catat).time; // AMAN
+                    const safeTime = formatRawDateTime(c.waktu_catat).time;
                     processedData.waktuLabels[Math.round(chartIndex)] = safeTime;
                 }
 
-                // Mapping Data
                 if (c.djj) processedData.djj.push({ i: chartIndex, v: c.djj });
                 if (c.pembukaan_servik) processedData.pembukaan.push({ i: chartIndex, v: c.pembukaan_servik });
                 if (c.penurunan_kepala) processedData.penurunan.push({ i: chartIndex, v: c.penurunan_kepala });
@@ -406,13 +392,12 @@
         // --- 3. RENDER FUNCTIONS ---
         function renderInfo() {
             const p = processedData.pasien;
-            if (!p.noRegistrasi) return; // Belum ada data
+            if (!p.noRegistrasi) return;
 
-            // Reg Box (7 kotak)
             const regBox = document.getElementById('reg-box');
             const finalReg = Array(7).fill('');
             (p.noRegistrasi || "").toString().split('').forEach((c, i) => { if(i < 7) finalReg[i] = c; });
-            regBox.innerHTML = ''; // Reset
+            regBox.innerHTML = '';
             finalReg.forEach(char => { regBox.innerHTML += `<div class="w-6 h-6 flex items-center justify-center border-r border-black last:border-r-0 bg-gray-50 font-bold text-base">${char}</div>`; });
 
             document.getElementById('nama-val').innerText = p.nama;
@@ -425,7 +410,6 @@
             document.getElementById('ketuban-val').innerText = p.ketuban;
             document.getElementById('mules-val').innerText = p.mules;
 
-            // Render Static Labels Y-Axis
             const drawLabels = (id, start, steps, stepVal, offset = 0) => {
                 let html = '';
                 for(let i=0; i<=steps; i++) {
@@ -454,6 +438,14 @@
                 <defs>
                     <pattern id="stripes" patternUnits="userSpaceOnUse" width="4" height="4" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="4" stroke="#000" stroke-width="1" /></pattern>
                     <pattern id="dots" patternUnits="userSpaceOnUse" width="3" height="3"><circle cx="1.5" cy="1.5" r="0.8" fill="#000" /></pattern>
+                    <!-- Filter untuk latar belakang teks tulisan tangan agar terbaca -->
+                    <filter id="bg-text" x="-0.1" y="-0.1" width="1.2" height="1.2">
+                        <feFlood flood-color="white" flood-opacity="0.85" result="bg" />
+                        <feMerge>
+                            <feMergeNode in="bg"/>
+                            <feMergeNode in="SourceGraphic"/>
+                        </feMerge>
+                    </filter>
                 </defs>`;
             
             let currentY = TOP_MARGIN;
@@ -481,7 +473,6 @@
                 let y = currentY + (i * UNIT_H);
                 svg += `<line x1="0" y1="${y}" x2="${CHART_AREA_WIDTH}" y2="${y}" class="grid-line" />`;
             }
-            // Render Ketuban & Penyusupan
             d.ketuban.forEach(item => {
                 let x = (item.i * COL_W) + (UNIT_W/2);
                 svg += `<text x="${x}" y="${currentY + (UNIT_H/2) + 4}" text-anchor="middle" class="data-text text-blue-800">${item.val}</text>`;
@@ -505,6 +496,16 @@
             svg += `<line x1="${getCX(3.5)}" y1="${getCY(4)}" x2="${getCX(9.5)}" y2="${getCY(10)}" stroke="#dc2626" stroke-width="2" />`;
             svg += `<text x="${getCX(5.5)}" y="${getCY(5.8)}" font-size="10" font-weight="bold" fill="#dc2626" transform="rotate(-26 ${getCX(5.5)} ${getCY(5.8)})">BERTINDAK</text>`;
             
+            // --- FITUR BARU: INFO LAHIR (Handwritten Overlay) ---
+            if (d.infoLahir) {
+                // Tampilkan di tengah area Serviks agar terlihat jelas
+                // Gunakan filter background putih semi-transparan agar garis grid tidak menabrak teks
+                let textX = CHART_AREA_WIDTH / 2;
+                let textY = currentY + (CER_H / 2); // Tengah-tengah area serviks
+                
+                svg += `<text x="${textX}" y="${textY}" text-anchor="middle" class="handwritten" font-size="20" filter="url(#bg-text)">${d.infoLahir}</text>`;
+            }
+
             // Pembukaan (Polyline)
             let pembukaanPts = "";
             d.pembukaan.forEach(item => {
@@ -537,13 +538,11 @@
                     svg += `<rect x="${x}" y="${boxY + 30}" width="${COL_W}" height="30" fill="white" stroke="black" stroke-width="1"/>`;
                 }
             }
-            // Jam Labels (Loop dari Object processedData)
             for (const [idxStr, val] of Object.entries(d.waktuLabels)) {
                 let idx = parseFloat(idxStr);
                 let tX = (idx * COL_W) + (COL_W/2); 
                 svg += `<text x="${tX}" y="${currentY + 30 + 19}" text-anchor="middle" class="label-waktu text-blue-800">${val}</text>`;
             }
-            // Nomor Jam (1, 2, 3...)
             for(let i=0; i<COLS; i++) {
                svg += `<text x="${(i * COL_W) + (COL_W/2)}" y="${currentY + 19}" text-anchor="middle" class="label-waktu">${i+1}</text>`;
             }
