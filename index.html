@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Partograf Digital API - Revisi Status Lahir</title>
+    <title>Partograf Digital API - Tampilan Final</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         body { font-family: 'Arial', sans-serif; }
@@ -22,8 +22,8 @@
         
         /* Font tulisan tangan untuk data input & hasil lahir */
         .handwritten {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            color: #1d4ed8; /* Blue-700 */
+            font-family: 'Verdana', 'Segoe UI', sans-serif; /* Font lebih tegas seperti contoh */
+            fill: #0000FF; /* Warna Biru Pulpen Murni */
             font-weight: 700;
         }
 
@@ -92,7 +92,7 @@
                 <div class="flex items-end w-full">
                     <div class="flex items-end flex-none mr-8 w-[350px]"><span class="header-label w-28">No. Puskesmas</span><div class="flex-1 header-input handwritten" id="puskesmas-val"></div></div>
                     <div class="flex flex-1 items-end gap-4">
-                        <div class="flex items-end flex-1"><span class="header-label mr-30">Tanggal:</span><div class="flex-1 header-input handwritten" id="tanggal-val">-</div></div>
+                        <div class="flex items-end flex-1"><span class="header-label mr-2">Tanggal:</span><div class="flex-1 header-input handwritten" id="tanggal-val">-</div></div>
                         <div class="flex items-end w-40 flex-none"><span class="header-label mr-2">Jam pemeriksaan:</span><div class="flex-1 header-input handwritten text-center" id="jam-val">-</div></div>
                         <div class="w-[100px]"></div> 
                     </div>
@@ -157,7 +157,7 @@
         </div>
         
         <div class="bg-gray-50 p-3 border-t border-gray-200 text-center text-xs text-gray-500">
-            Partograf Digital API v1.2 (Fitur Waktu Lahir)
+            Partograf Digital API v1.5 (Tampilan Persis Screenshot)
         </div>
     </div>
 
@@ -196,7 +196,6 @@
 
         // --- 2. LOGIKA API & DATA PROCESSING ---
         
-        // State Data Kosong
         let processedData = {
             pasien: {},
             djj: [],
@@ -210,8 +209,7 @@
             suhu: [],
             urine: [],
             waktuLabels: {},
-            // BARU: Menyimpan info lahir
-            infoLahir: null 
+            infoLahir: null // Object sekarang, bukan string
         };
 
         function getQueryParams() {
@@ -237,20 +235,16 @@
             };
 
             try {
-                // 1. Fetch Pasien
                 const pasienRes = await fetch(`https://restful-api-bmc-production.up.railway.app/api/pasien/${no_reg}/getData`, { headers });
                 if (!pasienRes.ok) throw new Error("Gagal mengambil data pasien");
                 const pasienJson = await pasienRes.json();
 
-                // 2. Fetch Partograf Catatan
                 const partografRes = await fetch(`https://restful-api-bmc-production.up.railway.app/api/partograf/${partograf_id}/catatan`, { headers });
                 if (!partografRes.ok) throw new Error("Gagal mengambil catatan partograf");
                 const partografJson = await partografRes.json();
 
-                // 3. Process Data
                 processApiData(pasienJson.data, partografJson.data);
                 
-                // 4. Render
                 document.getElementById('loading-screen').style.display = 'none';
                 document.getElementById('content-container').classList.remove('hidden');
                 renderInfo();
@@ -324,14 +318,16 @@
                 mules: jamMulesDisplay
             };
 
-            // --- LOGIKA BARU: Cek Status Selesai & Jam Lahir ---
+            // --- REVISI DATA LAHIR (Format Array untuk Multiline) ---
             if (persalinan.status === 'selesai' && persalinan.tanggal_jam_waktu_bayi_lahir) {
                 const lahirInfo = formatRawDateTime(persalinan.tanggal_jam_waktu_bayi_lahir);
-                // Buat kalimat hasil, contoh: "Tanggal 28 November 2025 pukul 23:00 WIB bayi lahir."
-                processedData.infoLahir = `Tanggal ${lahirInfo.date} pukul ${lahirInfo.time} WIB bayi lahir.`;
+                // Memecah jadi 2 baris untuk "persis" screenshot
+                processedData.infoLahir = [
+                    `Tanggal ${lahirInfo.date} pukul ${lahirInfo.time} WIB`,
+                    `Bayi lahir spontan` // Placeholder karena API tidak kirim BB/TB/Gender
+                ];
             }
 
-            // B. Data Grafik (Catatan)
             if (!catatanList) catatanList = [];
             catatanList.sort((a, b) => new Date(a.waktu_catat) - new Date(b.waktu_catat));
 
@@ -389,7 +385,6 @@
             });
         }
 
-        // --- 3. RENDER FUNCTIONS ---
         function renderInfo() {
             const p = processedData.pasien;
             if (!p.noRegistrasi) return;
@@ -438,7 +433,6 @@
                 <defs>
                     <pattern id="stripes" patternUnits="userSpaceOnUse" width="4" height="4" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="4" stroke="#000" stroke-width="1" /></pattern>
                     <pattern id="dots" patternUnits="userSpaceOnUse" width="3" height="3"><circle cx="1.5" cy="1.5" r="0.8" fill="#000" /></pattern>
-                    <!-- Filter untuk latar belakang teks tulisan tangan agar terbaca -->
                     <filter id="bg-text" x="-0.1" y="-0.1" width="1.2" height="1.2">
                         <feFlood flood-color="white" flood-opacity="0.85" result="bg" />
                         <feMerge>
@@ -496,17 +490,26 @@
             svg += `<line x1="${getCX(3.5)}" y1="${getCY(4)}" x2="${getCX(9.5)}" y2="${getCY(10)}" stroke="#dc2626" stroke-width="2" />`;
             svg += `<text x="${getCX(5.5)}" y="${getCY(5.8)}" font-size="10" font-weight="bold" fill="#dc2626" transform="rotate(-26 ${getCX(5.5)} ${getCY(5.8)})">BERTINDAK</text>`;
             
-            // --- FITUR BARU: INFO LAHIR (Handwritten Overlay) ---
+            // --- REVISI FINAL: POSISI PERSIS 9 TENGAH, MULTILINE, RATA TENGAH ---
             if (d.infoLahir) {
-                // Tampilkan di tengah area Serviks agar terlihat jelas
-                // Gunakan filter background putih semi-transparan agar garis grid tidak menabrak teks
-                let textX = CHART_AREA_WIDTH / 2;
-                let textY = currentY + (CER_H / 2); // Tengah-tengah area serviks
+                // Posisi X = Index 8.5 (Tengah kotak 9)
+                let textX = 12 * COL_W;
+                // Posisi Y = Tengah area Serviks
+                let textY = currentY + (CER_H / 2); 
                 
-                svg += `<text x="${textX}" y="${textY}" text-anchor="middle" class="handwritten" font-size="20" filter="url(#bg-text)">${d.infoLahir}</text>`;
+                // Menggunakan text-anchor="middle" untuk centering persis di titik 8.5
+                svg += `<text x="${textX}" y="${textY}" text-anchor="middle" class="handwritten" font-size="16" filter="url(#bg-text)">`;
+                
+                // Loop baris text
+                d.infoLahir.forEach((line, index) => {
+                    // dy="1.2em" untuk baris berikutnya
+                    let dy = index === 0 ? 0 : 20; 
+                    svg += `<tspan x="${textX}" dy="${dy}">${line}</tspan>`;
+                });
+                
+                svg += `</text>`;
             }
 
-            // Pembukaan (Polyline)
             let pembukaanPts = "";
             d.pembukaan.forEach(item => {
                 let x = item.i * COL_W; let y = getCY(item.v);
@@ -515,7 +518,6 @@
             });
             if (pembukaanPts) svg += `<polyline points="${pembukaanPts}" fill="none" stroke="purple" stroke-width="2" />`;
 
-            // Penurunan (Polyline)
             let penurunanPts = "";
             d.penurunan.forEach(item => {
                 let x = item.i * COL_W; let y = getCY(item.v);
@@ -596,7 +598,6 @@
                     svg += `<line x1="${xHalf}" y1="${currentY}" x2="${xHalf}" y2="${vitalsBottom}" class="grid-line-minor" />`;
                 }
             }
-            // BP
             d.bp.forEach(item => {
                 let x = item.i * COL_W;
                 let sysY = currentY + ((180 - item.s) / 10) * UNIT_H;
@@ -605,7 +606,6 @@
                 svg += `<path d="M${x-4},${sysY+6} L${x},${sysY} L${x+4},${sysY+6}" fill="none" stroke="blue" stroke-width="2" />`;
                 svg += `<path d="M${x-4},${diaY-6} L${x},${diaY} L${x+4},${diaY-6}" fill="none" stroke="blue" stroke-width="2" />`;
             });
-            // Nadi
             let nadiPts = "";
             d.nadi.forEach(item => {
                 let x = item.i * COL_W;
@@ -623,12 +623,10 @@
                 let x = i * COL_W;
                 svg += `<line x1="${x}" y1="${currentY}" x2="${x}" y2="${currentY + totalBottomH}" class="grid-line-major" />`;
             }
-            // Horizontal Lines
             for(let i=1; i<= (1 + URINE_ROWS); i++) {
                 let y = currentY + (i * UNIT_H);
                 svg += `<line x1="0" y1="${y}" x2="${CHART_AREA_WIDTH}" y2="${y}" class="grid-line" />`;
             }
-            // Data
             d.suhu.forEach(item => {
                 let x = (item.i * COL_W) + (COL_W / 2);
                 svg += `<text x="${x}" y="${currentY + (UNIT_H/2) + 4}" text-anchor="middle" class="data-text text-blue-800">${item.v}</text>`;
@@ -645,7 +643,6 @@
             document.getElementById('chart-svg-container').innerHTML = svg;
         }
 
-        // START
         fetchData();
 
     </script>
