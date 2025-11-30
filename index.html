@@ -157,7 +157,7 @@
         </div>
         
         <div class="bg-gray-50 p-3 border-t border-gray-200 text-center text-xs text-gray-500">
-            Partograf Digital API v1.5 (Tampilan Persis Screenshot)
+            Partograf Digital API v1.6 (Data Kelahiran Lengkap)
         </div>
     </div>
 
@@ -209,7 +209,7 @@
             suhu: [],
             urine: [],
             waktuLabels: {},
-            infoLahir: null // Object sekarang, bukan string
+            infoLahir: null 
         };
 
         function getQueryParams() {
@@ -318,13 +318,17 @@
                 mules: jamMulesDisplay
             };
 
-            // --- REVISI DATA LAHIR (Format Array untuk Multiline) ---
+            // --- BAGIAN LOGIKA KELAHIRAN LENGKAP ---
             if (persalinan.status === 'selesai' && persalinan.tanggal_jam_waktu_bayi_lahir) {
                 const lahirInfo = formatRawDateTime(persalinan.tanggal_jam_waktu_bayi_lahir);
-                // Memecah jadi 2 baris untuk "persis" screenshot
+                
+                // Helper: kalau data null tampilkan '-'
+                const val = (v) => (v !== null && v !== undefined) ? v : '-';
+
                 processedData.infoLahir = [
                     `Tanggal ${lahirInfo.date} pukul ${lahirInfo.time} WIB`,
-                    `Bayi lahir spontan` // Placeholder karena API tidak kirim BB/TB/Gender
+                    `bayi lahir spontan, menangis, jenis kelamin ${val(persalinan.jenis_kelamin)},`,
+                    `BB ${val(persalinan.berat_badan)} gram, PB ${val(persalinan.panjang_badan)} cm, LD ${val(persalinan.lingkar_dada)} cm, LK ${val(persalinan.lingkar_kepala)} cm`
                 ];
             }
 
@@ -490,7 +494,7 @@
             svg += `<line x1="${getCX(3.5)}" y1="${getCY(4)}" x2="${getCX(9.5)}" y2="${getCY(10)}" stroke="#dc2626" stroke-width="2" />`;
             svg += `<text x="${getCX(5.5)}" y="${getCY(5.8)}" font-size="10" font-weight="bold" fill="#dc2626" transform="rotate(-26 ${getCX(5.5)} ${getCY(5.8)})">BERTINDAK</text>`;
             
-            // --- REVISI FINAL: POSISI PERSIS 9 TENGAH, MULTILINE, RATA TENGAH ---
+            // --- RENDER INFO LAHIR (DENGAN BACKGROUND PUTIH SUPAYA JELAS) ---
             if (d.infoLahir) {
                 // Posisi X = Index 8.5 (Tengah kotak 9)
                 let textX = 12 * COL_W;
@@ -502,7 +506,7 @@
                 
                 // Loop baris text
                 d.infoLahir.forEach((line, index) => {
-                    // dy="1.2em" untuk baris berikutnya
+                    // dy="1.2em" untuk baris berikutnya, baris pertama 0
                     let dy = index === 0 ? 0 : 20; 
                     svg += `<tspan x="${textX}" dy="${dy}">${line}</tspan>`;
                 });
