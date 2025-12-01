@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Partograf Digital API - Tampilan Final</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Tambahkan library html2pdf -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <style>
         body { font-family: 'Arial', sans-serif; }
         * { box-sizing: border-box; }
@@ -25,6 +27,7 @@
             font-family: 'Verdana', 'Segoe UI', sans-serif; /* Font lebih tegas seperti contoh */
             fill: #0000FF; /* Warna Biru Pulpen Murni */
             font-weight: 700;
+            color: #0000FF;
         }
 
         /* Layout */
@@ -32,6 +35,7 @@
             width: 1100px; 
             margin: 0 auto;
             background: white;
+            /* Shadow kita hilangkan saat print/pdf agar bersih */
             box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
             border: 1px solid #e5e7eb;
         }
@@ -52,6 +56,39 @@
             position: fixed; inset: 0; background: rgba(255,255,255,0.9); 
             display: flex; justify-content: center; align-items: center; z-index: 50;
         }
+
+        /* Tombol Download Floating */
+        .fab-download {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            background-color: #dc2626; /* Red 600 */
+            color: white;
+            padding: 12px 24px;
+            border-radius: 50px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+            font-weight: bold;
+            cursor: pointer;
+            transition: transform 0.2s, background-color 0.2s;
+            z-index: 100;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .fab-download:hover {
+            background-color: #b91c1c; /* Red 700 */
+            transform: scale(1.05);
+        }
+        .fab-download svg {
+            width: 20px;
+            height: 20px;
+        }
+
+        /* Sembunyikan tombol saat PDF digenerate */
+        .pdf-hiding .fab-download, 
+        .pdf-hiding .version-footer {
+            display: none !important;
+        }
     </style>
 </head>
 <body class="bg-gray-50 min-h-screen p-4 overflow-x-auto">
@@ -70,6 +107,12 @@
             <p id="error-msg" class="text-red-600 text-sm"></p>
         </div>
     </div>
+
+    <!-- Tombol Download -->
+    <button onclick="downloadPDF()" id="btn-download" class="fab-download hidden">
+        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+        Download PDF (A4)
+    </button>
 
     <div class="main-container hidden" id="content-container">
         <div class="p-6 bg-white w-full border-b-2 border-black">
@@ -156,7 +199,7 @@
             </div>
         </div>
         
-        <div class="bg-gray-50 p-3 border-t border-gray-200 text-center text-xs text-gray-500">
+        <div class="bg-gray-50 p-3 border-t border-gray-200 text-center text-xs text-gray-500 version-footer">
             Partograf Digital API v1.6 (Data Kelahiran Lengkap)
         </div>
     </div>
@@ -225,7 +268,15 @@
             const { token, no_reg, partograf_id } = getQueryParams();
 
             if (!token || !no_reg || !partograf_id) {
-                showError("Parameter URL tidak lengkap. Harap sertakan ?token=...&no_reg=...&partograf_id=...");
+                // Untuk development/preview, kita load data dummy jika tidak ada parameter
+                // agar user bisa melihat tampilan dan mencoba tombol PDF
+                console.warn("Parameter tidak lengkap, memuat dummy data untuk preview.");
+                processApiData(getDummyPasien(), getDummyCatatan());
+                document.getElementById('loading-screen').style.display = 'none';
+                document.getElementById('content-container').classList.remove('hidden');
+                document.getElementById('btn-download').classList.remove('hidden'); // Tampilkan tombol
+                renderInfo();
+                renderChart();
                 return;
             }
 
@@ -247,6 +298,7 @@
                 
                 document.getElementById('loading-screen').style.display = 'none';
                 document.getElementById('content-container').classList.remove('hidden');
+                document.getElementById('btn-download').classList.remove('hidden'); // Tampilkan tombol
                 renderInfo();
                 renderChart();
 
@@ -259,6 +311,32 @@
             document.getElementById('loading-screen').classList.add('hidden');
             document.getElementById('error-screen').classList.remove('hidden');
             document.getElementById('error-msg').innerText = msg;
+        }
+
+        // --- DUMMY DATA FOR PREVIEW WITHOUT API ---
+        function getDummyPasien() {
+            return {
+                no_reg: "12345678",
+                nama: "Ny. Contoh",
+                umur: 28,
+                gravida: 2, paritas: 1, abortus: 0,
+                persalinan: [{
+                    tanggal_jam_rawat: "2023-10-27T08:00:00",
+                    tanggal_jam_mules: "2023-10-27T04:00:00",
+                    ketuban_pecah: true,
+                    tanggal_jam_ketuban_pecah: "2023-10-27T09:00:00",
+                    status: 'selesai',
+                    tanggal_jam_waktu_bayi_lahir: "2023-10-27T16:00:00",
+                    jenis_kelamin: "Laki-laki",
+                    berat_badan: 3200, panjang_badan: 49, lingkar_dada: 33, lingkar_kepala: 34
+                }]
+            };
+        }
+        function getDummyCatatan() {
+            return [
+                { waktu_catat: "2023-10-27T08:00:00", pembukaan_servik: 4, penurunan_kepala: 4, djj: 140, nadi_ibu: 80, sistolik: 110, diastolik: 70, suhu_ibu: 36.5, air_ketuban: 'J', molase: '0', kontraksi: [{waktu_mulai: "2023-10-27T08:00:00", waktu_selesai: "2023-10-27T08:00:30"}, {waktu_mulai: "2023-10-27T08:00:00", waktu_selesai: "2023-10-27T08:00:30"}, {waktu_mulai: "2023-10-27T08:00:00", waktu_selesai: "2023-10-27T08:00:30"}] },
+                { waktu_catat: "2023-10-27T12:00:00", pembukaan_servik: 8, penurunan_kepala: 2, djj: 145, nadi_ibu: 84, sistolik: 120, diastolik: 80, suhu_ibu: 36.7, air_ketuban: 'J', molase: '0', kontraksi: [{waktu_mulai: "2023-10-27T08:00:00", waktu_selesai: "2023-10-27T08:00:45"}, {waktu_mulai: "2023-10-27T08:00:00", waktu_selesai: "2023-10-27T08:00:45"}, {waktu_mulai: "2023-10-27T08:00:00", waktu_selesai: "2023-10-27T08:00:45"}, {waktu_mulai: "2023-10-27T08:00:00", waktu_selesai: "2023-10-27T08:00:45"}] }
+            ];
         }
 
         function processApiData(pasien, catatanList) {
@@ -645,6 +723,40 @@
 
             svg += `</svg>`;
             document.getElementById('chart-svg-container').innerHTML = svg;
+        }
+
+        // --- 3. EXPORT TO PDF FUNCTIONALITY ---
+        function downloadPDF() {
+            // Sembunyikan tombol saat download
+            document.body.classList.add('pdf-hiding');
+            
+            // Elemen yang akan dicetak
+            const element = document.getElementById('content-container');
+            
+            // Nama file berdasarkan No Reg
+            const noReg = processedData.pasien.noRegistrasi || 'download';
+            
+            // Konfigurasi html2pdf
+            // Format A4: 210mm x 297mm
+            // Container width kita 1100px.
+            // Kita biarkan library mengatur scaling agar pas di A4.
+            const opt = {
+                margin:       [5, 5, 5, 5], // Margin tipis 5mm
+                filename:     `Partograf-${noReg}.pdf`,
+                image:        { type: 'jpeg', quality: 0.98 },
+                html2canvas:  { scale: 2, useCORS: true }, // Scale 2x untuk ketajaman
+                jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
+            };
+
+            // Eksekusi
+            html2pdf().set(opt).from(element).save().then(() => {
+                // Munculkan tombol kembali setelah selesai
+                document.body.classList.remove('pdf-hiding');
+            }).catch(err => {
+                console.error("PDF Export Error:", err);
+                alert("Gagal mengunduh PDF");
+                document.body.classList.remove('pdf-hiding');
+            });
         }
 
         fetchData();
