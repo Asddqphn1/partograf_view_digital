@@ -62,7 +62,7 @@
             position: fixed;
             bottom: 30px;
             right: 30px;
-            background-color: #dc2626; /* Red 600 */
+            background-color: #10b981; /* Green 500 */
             color: white;
             padding: 12px 24px;
             border-radius: 50px;
@@ -76,7 +76,7 @@
             gap: 8px;
         }
         .fab-download:hover {
-            background-color: #b91c1c; /* Red 700 */
+            background-color: #059669; /* Green 600 */
             transform: scale(1.05);
         }
         .fab-download svg {
@@ -88,6 +88,13 @@
         .pdf-hiding .fab-download, 
         .pdf-hiding .version-footer {
             display: none !important;
+        }
+
+        /* Tombol yang dinonaktifkan */
+        .fab-download.disabled {
+            background-color: #9ca3af; /* Gray 400 */
+            cursor: not-allowed;
+            transform: none;
         }
     </style>
 </head>
@@ -109,10 +116,13 @@
     </div>
 
     <!-- Tombol Download -->
-    <button onclick="downloadPDF()" id="btn-download" class="fab-download hidden">
+    <button onclick="downloadPDF(this)" id="btn-download" class="fab-download hidden">
         <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
-        Download PDF (A4)
+        Export PDF (A4)
     </button>
+    <div id="pdf-status" class="fab-download hidden disabled" style="background-color: #3b82f6; right: 10px; bottom: 10px;">
+        <span id="status-text">Memproses PDF...</span>
+    </div>
 
     <div class="main-container hidden" id="content-container">
         <div class="p-6 bg-white w-full border-b-2 border-black">
@@ -269,7 +279,6 @@
 
             if (!token || !no_reg || !partograf_id) {
                 // Untuk development/preview, kita load data dummy jika tidak ada parameter
-                // agar user bisa melihat tampilan dan mencoba tombol PDF
                 console.warn("Parameter tidak lengkap, memuat dummy data untuk preview.");
                 processApiData(getDummyPasien(), getDummyCatatan());
                 document.getElementById('loading-screen').style.display = 'none';
@@ -725,38 +734,70 @@
             document.getElementById('chart-svg-container').innerHTML = svg;
         }
 
-        // --- 3. EXPORT TO PDF FUNCTIONALITY ---
-        function downloadPDF() {
-            // Sembunyikan tombol saat download
-            document.body.classList.add('pdf-hiding');
-            
-            // Elemen yang akan dicetak
-            const element = document.getElementById('content-container');
-            
-            // Nama file berdasarkan No Reg
-            const noReg = processedData.pasien.noRegistrasi || 'download';
-            
-            // Konfigurasi html2pdf
-            // Format A4: 210mm x 297mm
-            // Container width kita 1100px.
-            // Kita biarkan library mengatur scaling agar pas di A4.
-            const opt = {
-                margin:       [5, 5, 5, 5], // Margin tipis 5mm
-                filename:     `Partograf-${noReg}.pdf`,
-                image:        { type: 'jpeg', quality: 0.98 },
-                html2canvas:  { scale: 2, useCORS: true }, // Scale 2x untuk ketajaman
-                jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
-            };
+        /**
+         * Mengirim data PDF (Base64) ke lingkungan Native (React Native WebView)
+         * agar aplikasi native yang menangani penyimpanan atau berbagi.
+         * @param {string} base64Data Data PDF dalam format Base64.
+         * @param {string} filename Nama file yang disarankan.
+         */
+        function sendPdfToNative(base64Data, filename) {
+            if (window.ReactNativeWebView && window.ReactNativeWebView.postMessage) {
+                const message = JSON.stringify({
+                    action: 'EXPORT_PDF',
+                    filename: filename,
+                    data: base64Data 
+                });
+                window.ReactNativeWebView.postMessage(message);
+            } else {
+                console.error("ReactNativeWebView is not available. Cannot send PDF to native.");
+                alert("Gagal mengirim PDF ke aplikasi (WebView API tidak tersedia).");
+            }
+        }
 
-            // Eksekusi
-            html2pdf().set(opt).from(element).save().then(() => {
-                // Munculkan tombol kembali setelah selesai
-                document.body.classList.remove('pdf-hiding');
-            }).catch(err => {
+        // --- 3. EXPORT TO PDF FUNCTIONALITY ---
+        async function downloadPDF(button) {
+            if (button.classList.contains('disabled')) return;
+            
+            // 1. Tampilkan status loading
+            button.classList.add('hidden');
+            document.getElementById('pdf-status').classList.remove('hidden');
+            document.getElementById('status-text').innerText = "Memproses PDF...";
+
+            try {
+                // Elemen yang akan dicetak
+                const element = document.getElementById('content-container');
+                const noReg = processedData.pasien.noRegistrasi || 'download';
+                const filename = `Partograf-${noReg}.pdf`;
+
+                // Konfigurasi html2pdf
+                const opt = {
+                    margin:       [5, 5, 5, 5], 
+                    filename:     filename,
+                    image:        { type: 'jpeg', quality: 0.98 },
+                    html2canvas:  { scale: 2, useCORS: true }, 
+                    jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
+                };
+
+                // 2. Generate PDF dan dapatkan sebagai Data URI String (Base64)
+                document.getElementById('status-text').innerText = "Mengekspor ke A4...";
+                const pdf = await html2pdf().set(opt).from(element).output('datauristring');
+                
+                // Hapus awalan data URI (misalnya 'data:application/pdf;base64,')
+                const base64Data = pdf.split(',')[1];
+                
+                // 3. Kirim ke Native
+                document.getElementById('status-text').innerText = "Mengirim ke Native...";
+                sendPdfToNative(base64Data, filename);
+
+            } catch (err) {
                 console.error("PDF Export Error:", err);
-                alert("Gagal mengunduh PDF");
-                document.body.classList.remove('pdf-hiding');
-            });
+                document.getElementById('status-text').innerText = "Gagal. Cek console.";
+                // Tampilkan tombol download lagi setelah 3 detik
+                setTimeout(() => {
+                    document.getElementById('pdf-status').classList.add('hidden');
+                    button.classList.remove('hidden');
+                }, 3000);
+            }
         }
 
         fetchData();
