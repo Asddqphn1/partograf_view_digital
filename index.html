@@ -923,19 +923,34 @@
               val: c.volume_urine,
             });
 
-          if (c.kontraksi && c.kontraksi.length > 0) {
-            const frekuensi = c.kontraksi.length;
-            let maxDur = 0;
-            c.kontraksi.forEach((k) => {
-              const start = new Date(k.waktu_mulai);
-              const end = new Date(k.waktu_selesai);
-              const dur = (end - start) / 1000;
-              if (dur > maxDur) maxDur = dur;
-            });
+          // --- UPDATE LOGIC KONTRAKSI (HYBRID) ---
+          let frekuensiFinal = 0;
+          let durasiFinal = 0;
+
+          // Cek 1: Apakah ada input manual? (Prioritas Utama)
+          if (c.kontraksi_frekuensi !== null && c.kontraksi_frekuensi !== undefined) {
+             frekuensiFinal = parseInt(c.kontraksi_frekuensi);
+             durasiFinal = c.kontraksi_durasi ? parseInt(c.kontraksi_durasi) : 0;
+          } 
+          // Cek 2: Kalau manual kosong, hitung dari array kontraksi (Stopwatch/Legacy)
+          else if (c.kontraksi && c.kontraksi.length > 0) {
+             frekuensiFinal = c.kontraksi.length;
+             let maxDur = 0;
+             c.kontraksi.forEach((k) => {
+               const start = new Date(k.waktu_mulai);
+               const end = new Date(k.waktu_selesai);
+               const dur = (end - start) / 1000;
+               if (dur > maxDur) maxDur = dur;
+             });
+             durasiFinal = maxDur;
+          }
+
+          // Push ke data grafik jika ada data valid
+          if (frekuensiFinal > 0) {
             processedData.kontraksi.push({
               i: chartIndex,
-              f: frekuensi,
-              d: maxDur,
+              f: frekuensiFinal,
+              d: durasiFinal,
             });
           }
         });
