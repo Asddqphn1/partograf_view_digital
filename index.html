@@ -178,6 +178,25 @@
         border: 1px solid #f87171;
         color: #991b1b;
       }
+
+      @page {
+        size: A4;
+        margin: 0;
+      }
+
+      @media print {
+        body {
+          margin: 0;
+        }
+
+        #content-container {
+          width: 210mm !important;
+          height: 297mm !important;
+          overflow: hidden !important;
+          page-break-inside: avoid;
+          page-break-after: avoid;
+        }
+      }
     </style>
   </head>
   <body class="bg-gray-50 min-h-screen p-4 overflow-x-auto">
@@ -537,16 +556,26 @@
       const URINE_ROWS = 3;
 
       // Variabel Global untuk Tinggi (Akan diisi oleh fungsi updateDimensions)
-      let UNIT_H, DJJ_H, MID_H, CER_H, TIME_H, KONTRAKSI_H, OBAT_H, VITALS_H, SUHU_H, URINE_H, TOTAL_H;
+      let UNIT_H,
+        DJJ_H,
+        MID_H,
+        CER_H,
+        TIME_H,
+        KONTRAKSI_H,
+        OBAT_H,
+        VITALS_H,
+        SUHU_H,
+        URINE_H,
+        TOTAL_H;
 
       // Fungsi untuk mengatur ulang dimensi (Normal vs Export)
       function updateDimensions(isExport = false) {
         // JIKA EXPORT: Gunakan 19px agar muat 1 halaman A4
         // JIKA NORMAL: Gunakan 30px agar enak dilihat di HP
-        UNIT_H = isExport ? 19 : 30; 
-        
+        UNIT_H = isExport ? 19 : 30;
+
         // Sesuaikan tinggi area statis juga
-        TIME_H = isExport ? 50 : 65; 
+        TIME_H = isExport ? 50 : 65;
         OBAT_H = isExport ? 50 : 80;
 
         // Hitung ulang tinggi area lain
@@ -558,10 +587,21 @@
         SUHU_H = UNIT_H;
         URINE_H = URINE_ROWS * UNIT_H;
 
-        TOTAL_H = TOP_MARGIN + DJJ_H + MID_H + CER_H + TIME_H + KONTRAKSI_H + OBAT_H + VITALS_H + SUHU_H + URINE_H;
+        TOTAL_H =
+          TOP_MARGIN +
+          DJJ_H +
+          MID_H +
+          CER_H +
+          TIME_H +
+          KONTRAKSI_H +
+          OBAT_H +
+          VITALS_H +
+          SUHU_H +
+          URINE_H;
 
         // Terapkan tinggi ke elemen HTML Label (Kolom Kiri)
-        const setH = (id, val) => (document.getElementById(id).style.height = `${val}px`);
+        const setH = (id, val) =>
+          (document.getElementById(id).style.height = `${val}px`);
         setH("label-djj-area", DJJ_H + TOP_MARGIN);
         setH("label-middle-area", MID_H);
         setH("label-cervix-area", CER_H);
@@ -604,7 +644,7 @@
         const { token, no_reg, partograf_id } = getQueryParams();
 
         // Inisialisasi awal dengan ukuran normal
-        updateDimensions(false); 
+        updateDimensions(false);
 
         if (!token || !no_reg || !partograf_id) {
           console.warn("Parameter tidak lengkap, memuat dummy data.");
@@ -695,9 +735,18 @@
             air_ketuban: "J",
             molase: "0",
             kontraksi: [
-              { waktu_mulai: "2023-10-27T08:00:00", waktu_selesai: "2023-10-27T08:00:30" },
-              { waktu_mulai: "2023-10-27T08:00:00", waktu_selesai: "2023-10-27T08:00:30" },
-              { waktu_mulai: "2023-10-27T08:00:00", waktu_selesai: "2023-10-27T08:00:30" },
+              {
+                waktu_mulai: "2023-10-27T08:00:00",
+                waktu_selesai: "2023-10-27T08:00:30",
+              },
+              {
+                waktu_mulai: "2023-10-27T08:00:00",
+                waktu_selesai: "2023-10-27T08:00:30",
+              },
+              {
+                waktu_mulai: "2023-10-27T08:00:00",
+                waktu_selesai: "2023-10-27T08:00:30",
+              },
             ],
           },
           {
@@ -712,10 +761,22 @@
             air_ketuban: "J",
             molase: "0",
             kontraksi: [
-              { waktu_mulai: "2023-10-27T08:00:00", waktu_selesai: "2023-10-27T08:00:45" },
-              { waktu_mulai: "2023-10-27T08:00:00", waktu_selesai: "2023-10-27T08:00:45" },
-              { waktu_mulai: "2023-10-27T08:00:00", waktu_selesai: "2023-10-27T08:00:45" },
-              { waktu_mulai: "2023-10-27T08:00:00", waktu_selesai: "2023-10-27T08:00:45" },
+              {
+                waktu_mulai: "2023-10-27T08:00:00",
+                waktu_selesai: "2023-10-27T08:00:45",
+              },
+              {
+                waktu_mulai: "2023-10-27T08:00:00",
+                waktu_selesai: "2023-10-27T08:00:45",
+              },
+              {
+                waktu_mulai: "2023-10-27T08:00:00",
+                waktu_selesai: "2023-10-27T08:00:45",
+              },
+              {
+                waktu_mulai: "2023-10-27T08:00:00",
+                waktu_selesai: "2023-10-27T08:00:45",
+              },
             ],
           },
         ];
@@ -730,11 +791,26 @@
             if (isoString.indexOf("T") === -1) separator = " ";
             const parts = isoString.split(separator);
             const datePart = parts[0];
-            const timePart = parts.length > 1 && parts[1] ? parts[1].substring(0, 5) : "00:00";
+            const timePart =
+              parts.length > 1 && parts[1] ? parts[1].substring(0, 5) : "00:00";
             const [y, m, d] = datePart.split("-");
-            const monthNames = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
+            const monthNames = [
+              "Januari",
+              "Februari",
+              "Maret",
+              "April",
+              "Mei",
+              "Juni",
+              "Juli",
+              "Agustus",
+              "September",
+              "Oktober",
+              "November",
+              "Desember",
+            ];
             let formattedDate = datePart;
-            if (y && m && d) formattedDate = `${d} ${monthNames[parseInt(m) - 1]} ${y}`;
+            if (y && m && d)
+              formattedDate = `${d} ${monthNames[parseInt(m) - 1]} ${y}`;
             return { date: formattedDate, time: timePart };
           } catch (e) {
             return { date: "-", time: "-" };
@@ -742,14 +818,21 @@
         };
 
         const rawatData = formatRawDateTime(persalinan.tanggal_jam_rawat);
-        const jamMasukDisplay = rawatData.time !== "-" ? `${rawatData.time} WIB` : "-";
+        const jamMasukDisplay =
+          rawatData.time !== "-" ? `${rawatData.time} WIB` : "-";
         const mulesData = formatRawDateTime(persalinan.tanggal_jam_mules);
-        const jamMulesDisplay = mulesData.time !== "-" ? `${mulesData.time} WIB` : "-";
+        const jamMulesDisplay =
+          mulesData.time !== "-" ? `${mulesData.time} WIB` : "-";
 
         let ketubanDisplay = "-";
         if (persalinan.ketuban_pecah === false) ketubanDisplay = "Belum Pecah";
-        else if (persalinan.ketuban_pecah === true && persalinan.tanggal_jam_ketuban_pecah) {
-          const kRaw = formatRawDateTime(persalinan.tanggal_jam_ketuban_pecah).time;
+        else if (
+          persalinan.ketuban_pecah === true &&
+          persalinan.tanggal_jam_ketuban_pecah
+        ) {
+          const kRaw = formatRawDateTime(
+            persalinan.tanggal_jam_ketuban_pecah
+          ).time;
           ketubanDisplay = kRaw !== "-" ? `${kRaw} WIB` : "-";
         }
 
@@ -766,26 +849,48 @@
           mules: jamMulesDisplay,
         };
 
-        if (persalinan.status === "selesai" && persalinan.tanggal_jam_waktu_bayi_lahir) {
-          const lahirInfo = formatRawDateTime(persalinan.tanggal_jam_waktu_bayi_lahir);
+        if (
+          persalinan.status === "selesai" &&
+          persalinan.tanggal_jam_waktu_bayi_lahir
+        ) {
+          const lahirInfo = formatRawDateTime(
+            persalinan.tanggal_jam_waktu_bayi_lahir
+          );
           const val = (v) => (v !== null && v !== undefined ? v : "-");
           processedData.infoLahir = [
             `Tanggal ${lahirInfo.date} pukul ${lahirInfo.time} WIB`,
-            `bayi lahir spontan, menangis, jenis kelamin ${val(persalinan.jenis_kelamin)},`,
-            `BB ${val(persalinan.berat_badan)} kg, PB ${val(persalinan.panjang_badan)} cm, LD ${val(persalinan.lingkar_dada)} cm, LK ${val(persalinan.lingkar_kepala)} cm`,
+            `bayi lahir spontan, menangis, jenis kelamin ${val(
+              persalinan.jenis_kelamin
+            )},`,
+            `BB ${val(persalinan.berat_badan)} kg, PB ${val(
+              persalinan.panjang_badan
+            )} cm, LD ${val(persalinan.lingkar_dada)} cm, LK ${val(
+              persalinan.lingkar_kepala
+            )} cm`,
           ];
         }
 
         if (!catatanList) catatanList = [];
-        catatanList.sort((a, b) => new Date(a.waktu_catat) - new Date(b.waktu_catat));
+        catatanList.sort(
+          (a, b) => new Date(a.waktu_catat) - new Date(b.waktu_catat)
+        );
 
         let startTime = null;
-        const activePhaseEntry = catatanList.find((c) => c.pembukaan_servik >= 4);
-        if (activePhaseEntry) startTime = new Date(activePhaseEntry.waktu_catat);
-        else if (catatanList.length > 0) startTime = new Date(catatanList[0].waktu_catat);
-        else { renderInfo(); return; }
+        const activePhaseEntry = catatanList.find(
+          (c) => c.pembukaan_servik >= 4
+        );
+        if (activePhaseEntry)
+          startTime = new Date(activePhaseEntry.waktu_catat);
+        else if (catatanList.length > 0)
+          startTime = new Date(catatanList[0].waktu_catat);
+        else {
+          renderInfo();
+          return;
+        }
 
-        let initialOpening = activePhaseEntry ? activePhaseEntry.pembukaan_servik : 4;
+        let initialOpening = activePhaseEntry
+          ? activePhaseEntry.pembukaan_servik
+          : 4;
         let initialXOffset = Math.max(0, initialOpening - 4);
 
         catatanList.forEach((c) => {
@@ -801,35 +906,74 @@
           }
 
           if (c.djj) processedData.djj.push({ i: chartIndex, v: c.djj });
-          if (c.pembukaan_servik) processedData.pembukaan.push({ i: chartIndex, v: c.pembukaan_servik });
-          if (c.penurunan_kepala) processedData.penurunan.push({ i: chartIndex, v: c.penurunan_kepala });
-          if (c.nadi_ibu) processedData.nadi.push({ i: chartIndex, v: c.nadi_ibu });
-          if (c.sistolik && c.diastolik) processedData.bp.push({ i: chartIndex, s: c.sistolik, d: c.diastolik });
-          if (c.suhu_ibu) processedData.suhu.push({ i: chartIndex, v: c.suhu_ibu });
-          if (c.air_ketuban) processedData.ketuban.push({ i: chartIndex, val: c.air_ketuban });
-          if (c.molase) processedData.penyusupan.push({ i: chartIndex, val: c.molase });
-          if (c.protein) processedData.urine.push({ i: chartIndex, type: "protein", val: c.protein });
-          if (c.aseton) processedData.urine.push({ i: chartIndex, type: "aseton", val: c.aseton });
-          if (c.volume_urine) processedData.urine.push({ i: chartIndex, type: "volume", val: c.volume_urine });
+          if (c.pembukaan_servik)
+            processedData.pembukaan.push({
+              i: chartIndex,
+              v: c.pembukaan_servik,
+            });
+          if (c.penurunan_kepala)
+            processedData.penurunan.push({
+              i: chartIndex,
+              v: c.penurunan_kepala,
+            });
+          if (c.nadi_ibu)
+            processedData.nadi.push({ i: chartIndex, v: c.nadi_ibu });
+          if (c.sistolik && c.diastolik)
+            processedData.bp.push({
+              i: chartIndex,
+              s: c.sistolik,
+              d: c.diastolik,
+            });
+          if (c.suhu_ibu)
+            processedData.suhu.push({ i: chartIndex, v: c.suhu_ibu });
+          if (c.air_ketuban)
+            processedData.ketuban.push({ i: chartIndex, val: c.air_ketuban });
+          if (c.molase)
+            processedData.penyusupan.push({ i: chartIndex, val: c.molase });
+          if (c.protein)
+            processedData.urine.push({
+              i: chartIndex,
+              type: "protein",
+              val: c.protein,
+            });
+          if (c.aseton)
+            processedData.urine.push({
+              i: chartIndex,
+              type: "aseton",
+              val: c.aseton,
+            });
+          if (c.volume_urine)
+            processedData.urine.push({
+              i: chartIndex,
+              type: "volume",
+              val: c.volume_urine,
+            });
 
           let frekuensiFinal = 0;
           let durasiFinal = 0;
-          if (c.kontraksi_frekuensi !== null && c.kontraksi_frekuensi !== undefined) {
-             frekuensiFinal = parseInt(c.kontraksi_frekuensi);
-             durasiFinal = c.kontraksi_durasi ? parseInt(c.kontraksi_durasi) : 0;
+          if (
+            c.kontraksi_frekuensi !== null &&
+            c.kontraksi_frekuensi !== undefined
+          ) {
+            frekuensiFinal = parseInt(c.kontraksi_frekuensi);
+            durasiFinal = c.kontraksi_durasi ? parseInt(c.kontraksi_durasi) : 0;
           } else if (c.kontraksi && c.kontraksi.length > 0) {
-             frekuensiFinal = c.kontraksi.length;
-             let maxDur = 0;
-             c.kontraksi.forEach((k) => {
-               const start = new Date(k.waktu_mulai);
-               const end = new Date(k.waktu_selesai);
-               const dur = (end - start) / 1000;
-               if (dur > maxDur) maxDur = dur;
-             });
-             durasiFinal = maxDur;
+            frekuensiFinal = c.kontraksi.length;
+            let maxDur = 0;
+            c.kontraksi.forEach((k) => {
+              const start = new Date(k.waktu_mulai);
+              const end = new Date(k.waktu_selesai);
+              const dur = (end - start) / 1000;
+              if (dur > maxDur) maxDur = dur;
+            });
+            durasiFinal = maxDur;
           }
           if (frekuensiFinal > 0) {
-            processedData.kontraksi.push({ i: chartIndex, f: frekuensiFinal, d: durasiFinal });
+            processedData.kontraksi.push({
+              i: chartIndex,
+              f: frekuensiFinal,
+              d: durasiFinal,
+            });
           }
         });
       }
@@ -840,7 +984,12 @@
 
         const regBox = document.getElementById("reg-box");
         const finalReg = Array(7).fill("");
-        (p.noRegistrasi || "").toString().split("").forEach((c, i) => { if (i < 7) finalReg[i] = c; });
+        (p.noRegistrasi || "")
+          .toString()
+          .split("")
+          .forEach((c, i) => {
+            if (i < 7) finalReg[i] = c;
+          });
         regBox.innerHTML = "";
         finalReg.forEach((char) => {
           regBox.innerHTML += `<div class="w-6 h-6 flex items-center justify-center border-r border-black last:border-r-0 bg-gray-50 font-bold text-base">${char}</div>`;
@@ -880,7 +1029,9 @@
 
       function renderChart() {
         const d = processedData;
-        let svg = `<svg width="${CHART_AREA_WIDTH}" height="${TOTAL_H + 50}" class="block" style="width:100%;">
+        let svg = `<svg width="${CHART_AREA_WIDTH}" height="${
+          TOTAL_H + 50
+        }" class="block" style="width:100%;">
                 <defs>
                     <pattern id="stripes" patternUnits="userSpaceOnUse" width="4" height="4" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="4" stroke="#000" stroke-width="1" /></pattern>
                     <pattern id="dots" patternUnits="userSpaceOnUse" width="3" height="3"><circle cx="1.5" cy="1.5" r="0.8" fill="#000" /></pattern>
@@ -896,7 +1047,8 @@
         for (let i = 0; i <= DJJ_STEPS; i++) {
           let val = 200 - i * 10;
           let y = currentY + i * UNIT_H;
-          let cls = val === 180 || val === 100 ? "grid-line-thick" : "grid-line";
+          let cls =
+            val === 180 || val === 100 ? "grid-line-thick" : "grid-line";
           svg += `<line x1="0" y1="${y}" x2="${CHART_AREA_WIDTH}" y2="${y}" class="${cls}" />`;
         }
         let djjPoints = "";
@@ -906,7 +1058,8 @@
           djjPoints += `${x},${y} `;
           svg += `<circle cx="${x}" cy="${y}" r="3" fill="#2563eb" />`;
         });
-        if (djjPoints) svg += `<polyline points="${djjPoints}" fill="none" stroke="#2563eb" stroke-width="2" />`;
+        if (djjPoints)
+          svg += `<polyline points="${djjPoints}" fill="none" stroke="#2563eb" stroke-width="2" />`;
         currentY += DJJ_H;
 
         // 2. TENGAH
@@ -917,11 +1070,19 @@
         }
         d.ketuban.forEach((item) => {
           let x = item.i * COL_W + UNIT_W / 2;
-          svg += `<text x="${x}" y="${currentY + UNIT_H / 2 + 4}" text-anchor="middle" class="data-text text-blue-800">${item.val}</text>`;
+          svg += `<text x="${x}" y="${
+            currentY + UNIT_H / 2 + 4
+          }" text-anchor="middle" class="data-text text-blue-800">${
+            item.val
+          }</text>`;
         });
         d.penyusupan.forEach((item) => {
           let x = item.i * COL_W + UNIT_W / 2;
-          svg += `<text x="${x}" y="${currentY + UNIT_H + UNIT_H / 2 + 4}" text-anchor="middle" class="data-text text-blue-800">${item.val}</text>`;
+          svg += `<text x="${x}" y="${
+            currentY + UNIT_H + UNIT_H / 2 + 4
+          }" text-anchor="middle" class="data-text text-blue-800">${
+            item.val
+          }</text>`;
         });
         currentY += MID_H;
 
@@ -933,10 +1094,22 @@
         }
         const getCX = (h) => h * COL_W;
         const getCY = (cm) => currentY + (10 - cm) * UNIT_H;
-        svg += `<line x1="${getCX(0)}" y1="${getCY(4)}" x2="${getCX(6)}" y2="${getCY(10)}" stroke="#eab308" stroke-width="2" />`;
-        svg += `<text x="${getCX(2)}" y="${getCY(5.8)}" font-size="10" font-weight="bold" fill="#ca8a04" transform="rotate(-26 ${getCX(2)} ${getCY(5.8)})">WASPADA</text>`;
-        svg += `<line x1="${getCX(3.5)}" y1="${getCY(4)}" x2="${getCX(9.5)}" y2="${getCY(10)}" stroke="#dc2626" stroke-width="2" />`;
-        svg += `<text x="${getCX(5.5)}" y="${getCY(5.8)}" font-size="10" font-weight="bold" fill="#dc2626" transform="rotate(-26 ${getCX(5.5)} ${getCY(5.8)})">BERTINDAK</text>`;
+        svg += `<line x1="${getCX(0)}" y1="${getCY(4)}" x2="${getCX(
+          6
+        )}" y2="${getCY(10)}" stroke="#eab308" stroke-width="2" />`;
+        svg += `<text x="${getCX(2)}" y="${getCY(
+          5.8
+        )}" font-size="10" font-weight="bold" fill="#ca8a04" transform="rotate(-26 ${getCX(
+          2
+        )} ${getCY(5.8)})">WASPADA</text>`;
+        svg += `<line x1="${getCX(3.5)}" y1="${getCY(4)}" x2="${getCX(
+          9.5
+        )}" y2="${getCY(10)}" stroke="#dc2626" stroke-width="2" />`;
+        svg += `<text x="${getCX(5.5)}" y="${getCY(
+          5.8
+        )}" font-size="10" font-weight="bold" fill="#dc2626" transform="rotate(-26 ${getCX(
+          5.5
+        )} ${getCY(5.8)})">BERTINDAK</text>`;
 
         if (d.infoLahir) {
           let textX = 12 * COL_W;
@@ -956,7 +1129,8 @@
           pembukaanPts += `${x},${y} `;
           svg += `<g transform="translate(${x}, ${y})"><line x1="-6" y1="-6" x2="6" y2="6" stroke="purple" stroke-width="3" /><line x1="6" y1="-6" x2="-6" y2="6" stroke="purple" stroke-width="3" /></g>`;
         });
-        if (pembukaanPts) svg += `<polyline points="${pembukaanPts}" fill="none" stroke="purple" stroke-width="2" />`;
+        if (pembukaanPts)
+          svg += `<polyline points="${pembukaanPts}" fill="none" stroke="purple" stroke-width="2" />`;
 
         let penurunanPts = "";
         d.penurunan.forEach((item) => {
@@ -965,7 +1139,8 @@
           penurunanPts += `${x},${y} `;
           svg += `<circle cx="${x}" cy="${y}" r="5" fill="none" stroke="green" stroke-width="3" />`;
         });
-        if (penurunanPts) svg += `<polyline points="${penurunanPts}" fill="none" stroke="green" stroke-width="2" stroke-dasharray="4" />`;
+        if (penurunanPts)
+          svg += `<polyline points="${penurunanPts}" fill="none" stroke="green" stroke-width="2" stroke-dasharray="4" />`;
         currentY += CER_H;
 
         // 4. WAKTU
@@ -977,21 +1152,29 @@
             let xHalf = x + UNIT_W;
             svg += `<line x1="${xHalf}" y1="${TOP_MARGIN}" x2="${xHalf}" y2="${timeBottomY}" class="grid-line-minor" />`;
             let boxY = currentY;
-            svg += `<rect x="${x}" y="${boxY}" width="${COL_W}" height="${TIME_H/2}" fill="white" stroke="black" stroke-width="1"/>`;
-            svg += `<rect x="${x}" y="${boxY + TIME_H/2}" width="${COL_W}" height="${TIME_H/2}" fill="white" stroke="black" stroke-width="1"/>`;
+            svg += `<rect x="${x}" y="${boxY}" width="${COL_W}" height="${
+              TIME_H / 2
+            }" fill="white" stroke="black" stroke-width="1"/>`;
+            svg += `<rect x="${x}" y="${
+              boxY + TIME_H / 2
+            }" width="${COL_W}" height="${
+              TIME_H / 2
+            }" fill="white" stroke="black" stroke-width="1"/>`;
           }
         }
         // Label jam
         const timeBoxH = TIME_H / 2;
-        const timeTextY = currentY + timeBoxH + (timeBoxH / 2) + 4; // Center di kotak bawah
-        
+        const timeTextY = currentY + timeBoxH + timeBoxH / 2 + 4; // Center di kotak bawah
+
         for (const [idxStr, val] of Object.entries(d.waktuLabels)) {
           let idx = parseFloat(idxStr);
           let tX = idx * COL_W + COL_W / 2;
           svg += `<text x="${tX}" y="${timeTextY}" text-anchor="middle" class="label-waktu text-blue-800">${val}</text>`;
         }
         for (let i = 0; i < COLS; i++) {
-          svg += `<text x="${i * COL_W + COL_W / 2}" y="${currentY + (timeBoxH/2) + 4}" text-anchor="middle" class="label-waktu">${i + 1}</text>`;
+          svg += `<text x="${i * COL_W + COL_W / 2}" y="${
+            currentY + timeBoxH / 2 + 4
+          }" text-anchor="middle" class="label-waktu">${i + 1}</text>`;
         }
         currentY += TIME_H;
 
@@ -1002,10 +1185,14 @@
         }
         for (let i = 0; i <= COLS; i++) {
           let x = i * COL_W;
-          svg += `<line x1="${x}" y1="${currentY}" x2="${x}" y2="${currentY + KONTRAKSI_H}" class="grid-line-major" />`;
+          svg += `<line x1="${x}" y1="${currentY}" x2="${x}" y2="${
+            currentY + KONTRAKSI_H
+          }" class="grid-line-major" />`;
           if (i < COLS) {
             let xHalf = x + UNIT_W;
-            svg += `<line x1="${xHalf}" y1="${currentY}" x2="${xHalf}" y2="${currentY + KONTRAKSI_H}" class="grid-line-minor" />`;
+            svg += `<line x1="${xHalf}" y1="${currentY}" x2="${xHalf}" y2="${
+              currentY + KONTRAKSI_H
+            }" class="grid-line-minor" />`;
           }
         }
         d.kontraksi.forEach((item) => {
@@ -1013,17 +1200,28 @@
           let kW = UNIT_W;
           let kH = item.f * UNIT_H;
           let kY = currentY + KONTRAKSI_H - kH;
-          let fill = item.d < 20 ? "url(#dots)" : item.d <= 40 ? "url(#stripes)" : "black";
+          let fill =
+            item.d < 20
+              ? "url(#dots)"
+              : item.d <= 40
+              ? "url(#stripes)"
+              : "black";
           svg += `<rect x="${kX}" y="${kY}" width="${kW}" height="${kH}" fill="${fill}" stroke="black" />`;
         });
         currentY += KONTRAKSI_H;
 
         // 6. OBAT
         svg += `<line x1="0" y1="${currentY}" x2="${CHART_AREA_WIDTH}" y2="${currentY}" class="grid-line-thick" />`;
-        svg += `<line x1="0" y1="${currentY + OBAT_H}" x2="${CHART_AREA_WIDTH}" y2="${currentY + OBAT_H}" class="grid-line" />`;
+        svg += `<line x1="0" y1="${
+          currentY + OBAT_H
+        }" x2="${CHART_AREA_WIDTH}" y2="${
+          currentY + OBAT_H
+        }" class="grid-line" />`;
         for (let i = 0; i <= COLS; i++) {
           let x = i * COL_W;
-          svg += `<line x1="${x}" y1="${currentY}" x2="${x}" y2="${currentY + OBAT_H}" class="grid-line-major" />`;
+          svg += `<line x1="${x}" y1="${currentY}" x2="${x}" y2="${
+            currentY + OBAT_H
+          }" class="grid-line-major" />`;
         }
         currentY += OBAT_H;
 
@@ -1031,7 +1229,8 @@
         for (let i = 0; i <= VITALS_STEPS; i++) {
           let val = 180 - i * 10;
           let y = currentY + i * UNIT_H;
-          let cls = val === 100 || val === 180 ? "grid-line-thick" : "grid-line";
+          let cls =
+            val === 100 || val === 180 ? "grid-line-thick" : "grid-line";
           svg += `<line x1="0" y1="${y}" x2="${CHART_AREA_WIDTH}" y2="${y}" class="grid-line" />`;
         }
         let vitalsBottom = currentY + VITALS_H;
@@ -1048,8 +1247,12 @@
           let sysY = currentY + ((180 - item.s) / 10) * UNIT_H;
           let diaY = currentY + ((180 - item.d) / 10) * UNIT_H;
           svg += `<line x1="${x}" y1="${sysY}" x2="${x}" y2="${diaY}" stroke="blue" stroke-width="2" />`;
-          svg += `<path d="M${x - 4},${sysY + 6} L${x},${sysY} L${x + 4},${sysY + 6}" fill="none" stroke="blue" stroke-width="2" />`;
-          svg += `<path d="M${x - 4},${diaY - 6} L${x},${diaY} L${x + 4},${diaY - 6}" fill="none" stroke="blue" stroke-width="2" />`;
+          svg += `<path d="M${x - 4},${sysY + 6} L${x},${sysY} L${x + 4},${
+            sysY + 6
+          }" fill="none" stroke="blue" stroke-width="2" />`;
+          svg += `<path d="M${x - 4},${diaY - 6} L${x},${diaY} L${x + 4},${
+            diaY - 6
+          }" fill="none" stroke="blue" stroke-width="2" />`;
         });
         let nadiPts = "";
         d.nadi.forEach((item) => {
@@ -1058,7 +1261,8 @@
           nadiPts += `${x},${y} `;
           svg += `<circle cx="${x}" cy="${y}" r="3" fill="black" />`;
         });
-        if (nadiPts) svg += `<polyline points="${nadiPts.trim()}" fill="none" stroke="black" stroke-width="1.5" />`;
+        if (nadiPts)
+          svg += `<polyline points="${nadiPts.trim()}" fill="none" stroke="black" stroke-width="1.5" />`;
         currentY += VITALS_H;
 
         // 8. SUHU & 9. URINE
@@ -1066,7 +1270,9 @@
         svg += `<line x1="0" y1="${currentY}" x2="${CHART_AREA_WIDTH}" y2="${currentY}" class="grid-line-thick" />`;
         for (let i = 0; i <= COLS; i++) {
           let x = i * COL_W;
-          svg += `<line x1="${x}" y1="${currentY}" x2="${x}" y2="${currentY + totalBottomH}" class="grid-line-major" />`;
+          svg += `<line x1="${x}" y1="${currentY}" x2="${x}" y2="${
+            currentY + totalBottomH
+          }" class="grid-line-major" />`;
         }
         for (let i = 1; i <= 1 + URINE_ROWS; i++) {
           let y = currentY + i * UNIT_H;
@@ -1074,14 +1280,33 @@
         }
         d.suhu.forEach((item) => {
           let x = item.i * COL_W + COL_W / 2;
-          svg += `<text x="${x}" y="${currentY + UNIT_H / 2 + 4}" text-anchor="middle" class="data-text text-blue-800">${item.v}</text>`;
+          svg += `<text x="${x}" y="${
+            currentY + UNIT_H / 2 + 4
+          }" text-anchor="middle" class="data-text text-blue-800">${
+            item.v
+          }</text>`;
         });
         d.urine.forEach((item) => {
           let uY = currentY + SUHU_H;
           let x = item.i * COL_W + COL_W / 2;
-          if (item.type === "protein") svg += `<text x="${x}" y="${uY + 0.5 * UNIT_H + 4}" text-anchor="middle" class="data-text text-blue-800">${item.val}</text>`;
-          if (item.type === "aseton") svg += `<text x="${x}" y="${uY + 1.5 * UNIT_H + 4}" text-anchor="middle" class="data-text text-blue-800">${item.val}</text>`;
-          if (item.type === "volume") svg += `<text x="${x}" y="${uY + 2.5 * UNIT_H + 4}" text-anchor="middle" class="data-text text-blue-800">${item.val}</text>`;
+          if (item.type === "protein")
+            svg += `<text x="${x}" y="${
+              uY + 0.5 * UNIT_H + 4
+            }" text-anchor="middle" class="data-text text-blue-800">${
+              item.val
+            }</text>`;
+          if (item.type === "aseton")
+            svg += `<text x="${x}" y="${
+              uY + 1.5 * UNIT_H + 4
+            }" text-anchor="middle" class="data-text text-blue-800">${
+              item.val
+            }</text>`;
+          if (item.type === "volume")
+            svg += `<text x="${x}" y="${
+              uY + 2.5 * UNIT_H + 4
+            }" text-anchor="middle" class="data-text text-blue-800">${
+              item.val
+            }</text>`;
         });
 
         svg += `</svg>`;
@@ -1092,7 +1317,10 @@
         const toast = document.getElementById("toast-message");
         const toastText = document.getElementById("toast-text");
         toast.classList.remove("toast-success", "toast-error", "opacity-0");
-        toast.classList.add(isSuccess ? "toast-success" : "toast-error", "opacity-100");
+        toast.classList.add(
+          isSuccess ? "toast-success" : "toast-error",
+          "opacity-100"
+        );
         toastText.innerText = message;
         toast.style.opacity = 1;
         toast.style.pointerEvents = "auto";
@@ -1103,7 +1331,10 @@
       }
 
       function sendPdfToNative(base64Data, filename) {
-        if (window.ReactNativeWebView && window.ReactNativeWebView.postMessage) {
+        if (
+          window.ReactNativeWebView &&
+          window.ReactNativeWebView.postMessage
+        ) {
           const message = JSON.stringify({
             action: "EXPORT_PDF",
             filename: filename,
@@ -1111,7 +1342,9 @@
           });
           window.ReactNativeWebView.postMessage(message);
         } else {
-          console.error("ReactNativeWebView bridge is missing. Export aborted.");
+          console.error(
+            "ReactNativeWebView bridge is missing. Export aborted."
+          );
           showToast("Error Bridge: WebView bridge tidak tersedia.", false);
           document.getElementById("pdf-status").classList.add("hidden");
           document.getElementById("btn-download").classList.remove("hidden");
@@ -1125,7 +1358,11 @@
       window.addEventListener("message", (event) => {
         let data;
         try {
-          if (typeof event.data !== "string" || !event.data.startsWith('{"action":')) return;
+          if (
+            typeof event.data !== "string" ||
+            !event.data.startsWith('{"action":')
+          )
+            return;
           data = JSON.parse(event.data);
         } catch (e) {
           return;
@@ -1159,7 +1396,7 @@
         renderChart();
 
         // Tunggu sebentar agar DOM ter-render sempurna
-        await new Promise(r => setTimeout(r, 500));
+        await new Promise((r) => setTimeout(r, 500));
 
         button.classList.add("hidden");
         document.getElementById("pdf-status").classList.remove("hidden");
@@ -1175,20 +1412,41 @@
           let cleanNoReg = rawNoReg.replace(/[^a-zA-Z0-9]/g, "");
           const filename = `Partograf_${cleanName}_${cleanNoReg}.pdf`;
 
+          element.style.width = "210mm";
+          element.style.height = "297mm";
+          element.style.overflow = "hidden";
+
           const opt = {
-            margin: [5, 5, 5, 5],
+            margin: 0,
             filename: filename,
             image: { type: "jpeg", quality: 0.98 },
-            html2canvas: { scale: 2, useCORS: true, scrollY: 0 },
-            jsPDF: { unit: "mm", format: "a4", orientation: "portrait" },
-            pagebreak: { mode: 'avoid-all' }
+
+            html2canvas: {
+              scale: 1, // ⬅️ PENTING (2 bikin kepanjangan)
+              useCORS: true,
+              scrollY: 0,
+              windowWidth: 1100, // ⬅️ samakan dengan main-container
+            },
+
+            jsPDF: {
+              unit: "mm",
+              format: "a4",
+              orientation: "portrait",
+            },
+
+            pagebreak: {
+              mode: ["avoid-all"],
+            },
           };
 
-          const pdfDataUri = await html2pdf().set(opt).from(element).output("datauristring");
+          const pdfDataUri = await html2pdf()
+            .set(opt)
+            .from(element)
+            .output("datauristring");
           const base64Data = pdfDataUri.split(",")[1];
 
           sendPdfToNative(base64Data, filename);
-          
+
           // Note: updateDimensions(false) dipanggil di event listener message
           // agar tampilan tidak berubah sebelum native selesai memproses file.
         } catch (err) {
@@ -1196,7 +1454,7 @@
           showToast(`Gagal generate PDF: ${err.message}`, false);
           document.getElementById("pdf-status").classList.add("hidden");
           button.classList.remove("hidden");
-          
+
           // Kembalikan ke normal jika error di blok ini
           updateDimensions(false);
           renderInfo();
