@@ -178,24 +178,13 @@
         border: 1px solid #f87171;
         color: #991b1b;
       }
+      #content-container {
+        page-break-inside: avoid;
+      }
 
       @page {
         size: A4;
         margin: 0;
-      }
-
-      @media print {
-        body {
-          margin: 0;
-        }
-
-        #content-container {
-          width: 210mm !important;
-          height: 297mm !important;
-          overflow: hidden !important;
-          page-break-inside: avoid;
-          page-break-after: avoid;
-        }
       }
     </style>
   </head>
@@ -569,16 +558,12 @@
         TOTAL_H;
 
       // Fungsi untuk mengatur ulang dimensi (Normal vs Export)
-      function updateDimensions(isExport = false) {
-        // JIKA EXPORT: Gunakan 19px agar muat 1 halaman A4
-        // JIKA NORMAL: Gunakan 30px agar enak dilihat di HP
-        UNIT_H = isExport ? 19 : 30;
+      function updateDimensions() {
+        // SELALU ukuran BESAR (untuk WebView)
+        UNIT_H = 30;
+        TIME_H = 65;
+        OBAT_H = 80;
 
-        // Sesuaikan tinggi area statis juga
-        TIME_H = isExport ? 50 : 65;
-        OBAT_H = isExport ? 50 : 80;
-
-        // Hitung ulang tinggi area lain
         DJJ_H = DJJ_STEPS * UNIT_H;
         MID_H = MID_ROWS * UNIT_H;
         CER_H = CER_ROWS * UNIT_H;
@@ -599,7 +584,6 @@
           SUHU_H +
           URINE_H;
 
-        // Terapkan tinggi ke elemen HTML Label (Kolom Kiri)
         const setH = (id, val) =>
           (document.getElementById(id).style.height = `${val}px`);
         setH("label-djj-area", DJJ_H + TOP_MARGIN);
@@ -1390,75 +1374,69 @@
       async function downloadPDF(button) {
         if (button.classList.contains("disabled")) return;
 
-        // 1. UBAH KE MODE KOMPAK (A4)
-        updateDimensions(true);
-        renderInfo();
-        renderChart();
-
-        // Tunggu sebentar agar DOM ter-render sempurna
-        await new Promise((r) => setTimeout(r, 500));
-
         button.classList.add("hidden");
         document.getElementById("pdf-status").classList.remove("hidden");
-        document.getElementById("status-text").innerText = "Memproses PDF...";
+
+        const element = document.getElementById("content-container");
+
+        const a4WidthMM = 210;
+        const a4HeightMM = 297;
+
+        const elementWidthPx = element.scrollWidth;
+        const elementHeightPx = element.scrollHeight;
+
+        const pxPerMM = elementWidthPx / a4WidthMM;
+        const contentHeightMM = elementHeightPx / pxPerMM;
+
+        // 🔥 PAKAI MIN → JAGA-JAGA BIAR GA OVERFLOW
+        const scale = Math.min(1, a4HeightMM / contentHeightMM);
+
+        // APPLY SCALE
+        element.style.transform = `scale(${scale})`;
+        element.style.transformOrigin = "top left";
+
+        const opt = {
+          margin: 0,
+
+          image: {
+            type: "jpeg",
+            quality: 0.98,
+          },
+
+          html2canvas: {
+            scale: 1,
+            useCORS: true,
+            scrollY: 0,
+
+            // 🔥 INI PENTING
+            windowWidth: elementWidthPx / scale,
+            windowHeight: elementHeightPx / scale,
+          },
+
+          jsPDF: {
+            unit: "mm",
+            format: "a4",
+            orientation: "portrait",
+          },
+
+          pagebreak: { mode: ["avoid-all"] },
+        };
 
         try {
-          const element = document.getElementById("content-container");
-
-          // LOGIKA NAMA FILE DINAMIS
-          let rawName = processedData.pasien.nama || "Pasien";
-          let rawNoReg = processedData.pasien.noRegistrasi || "000";
-          let cleanName = rawName.replace(/[^a-zA-Z0-9]/g, "_");
-          let cleanNoReg = rawNoReg.replace(/[^a-zA-Z0-9]/g, "");
-          const filename = `Partograf_${cleanName}_${cleanNoReg}.pdf`;
-
-          element.style.width = "210mm";
-          element.style.height = "297mm";
-          element.style.overflow = "hidden";
-
-          const opt = {
-            margin: 0,
-            filename: filename,
-            image: { type: "jpeg", quality: 0.98 },
-
-            html2canvas: {
-              scale: 1, // ⬅️ PENTING (2 bikin kepanjangan)
-              useCORS: true,
-              scrollY: 0,
-              windowWidth: 1100, // ⬅️ samakan dengan main-container
-            },
-
-            jsPDF: {
-              unit: "mm",
-              format: "a4",
-              orientation: "portrait",
-            },
-
-            pagebreak: {
-              mode: ["avoid-all"],
-            },
-          };
-
           const pdfDataUri = await html2pdf()
             .set(opt)
             .from(element)
             .output("datauristring");
+
           const base64Data = pdfDataUri.split(",")[1];
-
-          sendPdfToNative(base64Data, filename);
-
-          // Note: updateDimensions(false) dipanggil di event listener message
-          // agar tampilan tidak berubah sebelum native selesai memproses file.
+          sendPdfToNative(base64Data, "Partograf_A4.pdf");
         } catch (err) {
-          console.error("PDF Export Error:", err);
-          showToast(`Gagal generate PDF: ${err.message}`, false);
+          console.error(err);
+          showToast("Gagal generate PDF", false);
+        } finally {
+          element.style.transform = "none";
           document.getElementById("pdf-status").classList.add("hidden");
           button.classList.remove("hidden");
-
-          // Kembalikan ke normal jika error di blok ini
-          updateDimensions(false);
-          renderInfo();
-          renderChart();
         }
       }
 
