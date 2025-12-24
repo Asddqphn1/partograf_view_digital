@@ -19,7 +19,9 @@
       .label-axis { font-size: 10px; font-weight: bold; }
       .label-waktu { font-size: 11px; font-weight: bold; }
       .data-text { font-size: 13px; font-weight: bold; font-family: sans-serif; }
-      .handwritten { font-family: "Courier New", Courier, monospace; fill: #0000ff; font-weight: 700; color: #1d4ed8; letter-spacing: 0.5px; }
+      
+      /* Font tulisan tangan untuk data input & hasil lahir */
+      .handwritten { font-family: "Verdana", "Segoe UI", sans-serif; fill: #0000ff; font-weight: 700; color: #0000ff; }
 
       /* Container Utama (Tetap 1100px agar logika plot tidak berubah) */
       .main-container {
@@ -38,6 +40,9 @@
       .header-label { font-weight: bold; color: #1f2937; white-space: nowrap; font-size: 13px; }
       .header-input { border-bottom: 1px solid black; padding: 0 4px; white-space: nowrap; font-size: 14px; min-height: 20px; display: flex; align-items: end; }
 
+      /* Legend & Patterns */
+      .legend-box { width: 12px; height: 12px; border: 1px solid black; display: inline-block; vertical-align: middle; margin-right: 4px; }
+
       /* --- STYLE KHUSUS MODE EXPORT (PDF) --- */
       body.exporting {
         width: 1150px !important; /* Force width agar kanan tidak terpotong */
@@ -53,13 +58,12 @@
 
       /* Header di PDF - Sedikit lebih lega dari sebelumnya */
       body.exporting .header-container {
-        padding: 20px 25px !important; /* Padding sedikit ditambah */
+        padding: 20px 25px !important; 
         border-bottom: 2px solid black !important;
       }
       body.exporting .header-row { margin-bottom: 10px; }
-      body.exporting .header-label { font-size: 12px; font-family: 'Times New Roman', serif; }
+      body.exporting .header-label { font-size: 12px; }
       body.exporting .header-input { font-size: 13px; height: 20px; border-bottom: 1px dotted #000; }
-      body.exporting .reg-box-item { width: 22px; height: 22px; font-size: 13px; }
       body.exporting #title-header { font-size: 24px; margin-bottom: 15px; text-decoration: underline; }
 
       /* Font grafik di PDF */
@@ -67,12 +71,13 @@
       body.exporting .label-waktu { font-size: 10px; } 
 
       /* UI Elements */
-      .legend-box { width: 12px; height: 12px; border: 1px solid black; display: inline-block; vertical-align: middle; margin-right: 4px; }
       #loading-screen { position: fixed; inset: 0; background: rgba(255,255,255,0.95); display: flex; justify-content: center; align-items: center; z-index: 50; }
       .fab-download { position: fixed; bottom: 30px; right: 30px; background-color: #10b981; color: white; padding: 12px 24px; border-radius: 50px; box-shadow: 0 4px 15px rgba(0,0,0,0.3); font-weight: bold; cursor: pointer; z-index: 100; display: flex; gap: 8px; align-items: center; transition: all 0.2s; }
       .fab-download:hover { transform: scale(1.05); background-color: #059669; }
       .fab-download.disabled { background-color: #9ca3af; transform: none; cursor: wait; }
-      #toast-message { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: #333; color: white; padding: 10px 20px; border-radius: 8px; opacity: 0; transition: opacity 0.3s; z-index: 200; font-size: 14px; }
+      #toast-message { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: #333; color: white; padding: 10px 20px; border-radius: 8px; opacity: 0; transition: opacity 0.3s; z-index: 200; font-size: 14px; pointer-events: none;}
+      .toast-success { background-color: #d1fae5; color: #065f46; border: 1px solid #34d399; }
+      .toast-error { background-color: #fee2e2; color: #991b1b; border: 1px solid #f87171; }
     </style>
   </head>
   <body class="bg-gray-100 min-h-screen p-4 overflow-x-auto">
@@ -81,6 +86,13 @@
       <div class="text-center">
         <div class="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-3"></div>
         <h2 class="text-lg font-bold text-gray-700">Memuat Data...</h2>
+      </div>
+    </div>
+
+    <div id="error-screen" class="hidden fixed inset-0 bg-white z-50 flex justify-center items-center">
+      <div class="text-center max-w-md p-6 bg-red-50 border border-red-200 rounded-lg">
+        <h2 class="text-xl font-bold text-red-700 mb-2">Gagal Memuat Data</h2>
+        <p id="error-msg" class="text-red-600 text-sm"></p>
       </div>
     </div>
     
@@ -109,16 +121,16 @@
             <div class="flex flex-1 gap-4">
               <div class="flex items-end flex-1">
                 <span class="header-label mr-2">Nama Ibu:</span>
-                <div class="flex-1 header-input handwritten pl-2" id="nama-val"></div>
+                <div class="flex-1 header-input handwritten pl-2" id="nama-val">-</div>
               </div>
               <div class="flex items-end w-24">
                 <span class="header-label mr-2">Umur:</span>
-                <div class="flex-1 header-input handwritten text-center" id="umur-val"></div>
+                <div class="flex-1 header-input handwritten text-center" id="umur-val">-</div>
               </div>
               <div class="flex items-end gap-3">
-                 <div class="flex items-end"><span class="header-label mr-1">G:</span><div class="header-input w-8 justify-center handwritten" id="g-val"></div></div>
-                 <div class="flex items-end"><span class="header-label mr-1">P:</span><div class="header-input w-8 justify-center handwritten" id="p-val"></div></div>
-                 <div class="flex items-end"><span class="header-label mr-1">A:</span><div class="header-input w-8 justify-center handwritten" id="a-val"></div></div>
+                 <div class="flex items-end"><span class="header-label mr-1">G:</span><div class="header-input w-8 justify-center handwritten" id="g-val">-</div></div>
+                 <div class="flex items-end"><span class="header-label mr-1">P:</span><div class="header-input w-8 justify-center handwritten" id="p-val">-</div></div>
+                 <div class="flex items-end"><span class="header-label mr-1">A:</span><div class="header-input w-8 justify-center handwritten" id="a-val">-</div></div>
               </div>
             </div>
           </div>
@@ -131,11 +143,11 @@
             <div class="flex flex-1 gap-4">
               <div class="flex items-end flex-1">
                 <span class="header-label mr-2">Tanggal Masuk:</span>
-                <div class="flex-1 header-input handwritten pl-2" id="tanggal-val"></div>
+                <div class="flex-1 header-input handwritten pl-2" id="tanggal-val">-</div>
               </div>
               <div class="flex items-end w-40">
                 <span class="header-label mr-2">Jam:</span>
-                <div class="flex-1 header-input handwritten text-center" id="jam-val"></div>
+                <div class="flex-1 header-input handwritten text-center" id="jam-val">-</div>
               </div>
             </div>
           </div>
@@ -143,11 +155,11 @@
           <div class="flex items-end w-full header-row">
             <div class="flex items-end mr-6 w-[450px]">
               <span class="header-label w-28 flex-none">Ketuban Pecah:</span>
-              <div class="flex-1 header-input handwritten pl-2" id="ketuban-val"></div>
+              <div class="flex-1 header-input handwritten pl-2" id="ketuban-val">-</div>
             </div>
             <div class="flex items-end flex-1">
               <span class="header-label mr-2">Mules Sejak:</span>
-              <div class="flex-1 header-input handwritten pl-2" id="mules-val"></div>
+              <div class="flex-1 header-input handwritten pl-2" id="mules-val">-</div>
             </div>
           </div>
         </div>
@@ -227,12 +239,10 @@
       function updateDimensions(isExport = false) {
         if (isExport) {
           // --- MODE EXPORT (Diperpanjang agar memenuhi A4) ---
-          // Sebelumnya 17.5px, sekarang kita naikkan jadi 20.5px
-          // Ini akan memanjangkan grafik ke bawah sekitar ~150px totalnya.
-          UNIT_H = 20.5; 
+          UNIT_H = 20.5; // Ini yang bikin Full Page ke bawah
           TOP_MARGIN = 15;
-          TIME_H = 55; // Agak direnggangkan
-          OBAT_H = 60; // Agak direnggangkan
+          TIME_H = 55;
+          OBAT_H = 60;
           document.body.classList.add('exporting');
         } else {
           // --- MODE NORMAL (Web View lega) ---
@@ -268,7 +278,7 @@
       // --- DATA & API ---
       let processedData = { pasien: {}, djj: [], nadi: [], kontraksi: [], bp: [], pembukaan: [], penurunan: [], ketuban: [], penyusupan: [], suhu: [], urine: [], waktuLabels: {}, infoLahir: null };
 
-      function getDummyPasien() { return { no_reg: "12345678", nama: "Ny. Contoh (Dummy)", umur: 28, gravida: 2, paritas: 1, abortus: 0, persalinan: [{ tanggal_jam_rawat: "2023-10-27T08:00:00", tanggal_jam_mules: "2023-10-27T04:00:00", ketuban_pecah: false, status: "selesai" }] }; }
+      function getDummyPasien() { return { no_reg: "12345678", nama: "Ny. Contoh (Dummy)", umur: 28, gravida: 2, paritas: 1, abortus: 0, persalinan: [{ tanggal_jam_rawat: "2023-10-27T08:00:00", tanggal_jam_mules: "2023-10-27T04:00:00", ketuban_pecah: false, status: "selesai", tanggal_jam_waktu_bayi_lahir: "2023-10-27T16:00:00", jenis_kelamin: "Laki-laki", berat_badan: 3200, panjang_badan: 49, lingkar_dada: 33, lingkar_kepala: 34 }] }; }
       function getDummyCatatan() { return [{ waktu_catat: "2023-10-27T08:00:00", pembukaan_servik: 4, penurunan_kepala: 4, djj: 140, nadi_ibu: 80, sistolik: 110, diastolik: 70, suhu_ibu: 36.5, air_ketuban: "J", molase: "0", kontraksi: [{ waktu_mulai: "2023-10-27T08:00:00", waktu_selesai: "2023-10-27T08:00:30" }] }]; }
 
       async function fetchData() {
@@ -297,31 +307,54 @@
           processApiData(pJson.data, cJson.data);
           finalizeLoad();
         } catch (err) {
-          document.getElementById("loading-screen").innerHTML = `<div class='text-red-600 font-bold'>Error: ${err.message}</div>`;
+            document.getElementById("loading-screen").classList.add("hidden");
+            document.getElementById("error-screen").classList.remove("hidden");
+            document.getElementById("error-msg").innerText = err.message;
         }
       }
 
       function processApiData(pasien, catatanList) {
         const persalinan = pasien.persalinan[0] || {};
-        const fmt = (iso) => {
-            if(!iso) return {d:"-",t:"-"};
-            try { 
-                const pts = iso.split(iso.includes("T")?"T":" ");
-                const dPts = pts[0].split("-");
-                const mNs = ["Jan","Feb","Mar","Apr","Mei","Jun","Jul","Agt","Sep","Okt","Nov","Des"];
-                return { d: `${dPts[2]} ${mNs[parseInt(dPts[1])-1]} ${dPts[0]}`, t: pts[1]?.substring(0,5)||"00:00" };
-            } catch(e){ return {d:"-",t:"-"}; }
+        const formatRawDateTime = (isoString) => {
+            if (!isoString) return { date: "-", time: "-" };
+            try {
+            let separator = "T";
+            if (isoString.indexOf("T") === -1) separator = " ";
+            const parts = isoString.split(separator);
+            const datePart = parts[0];
+            const timePart = parts.length > 1 && parts[1] ? parts[1].substring(0, 5) : "00:00";
+            const [y, m, d] = datePart.split("-");
+            const monthNames = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
+            let formattedDate = datePart;
+            if (y && m && d) formattedDate = `${d} ${monthNames[parseInt(m) - 1]} ${y}`;
+            return { date: formattedDate, time: timePart };
+            } catch (e) {
+            return { date: "-", time: "-" };
+            }
         };
 
-        const rawat = fmt(persalinan.tanggal_jam_rawat);
-        const mules = fmt(persalinan.tanggal_jam_mules);
-        const pecah = persalinan.ketuban_pecah ? fmt(persalinan.tanggal_jam_ketuban_pecah).t + " WIB" : "Belum Pecah";
+        const rawat = formatRawDateTime(persalinan.tanggal_jam_rawat);
+        const mules = formatRawDateTime(persalinan.tanggal_jam_mules);
+        const pecah = persalinan.ketuban_pecah ? formatRawDateTime(persalinan.tanggal_jam_ketuban_pecah).time + " WIB" : "Belum Pecah";
 
         processedData.pasien = {
             noRegistrasi: pasien.no_reg, nama: pasien.nama, umur: `${pasien.umur} th`,
             g: pasien.gravida, p: pasien.paritas, a: pasien.abortus,
-            tanggal: rawat.d, jam: rawat.t + " WIB", ketuban: pecah, mules: mules.t + " WIB"
+            tanggal: rawat.date, jam: rawat.time + " WIB", ketuban: pecah, mules: mules.time + " WIB"
         };
+        
+        // --- LOGIKA DATA BAYI DIKEMBALIKAN DISINI ---
+        if (persalinan.status === "selesai" && persalinan.tanggal_jam_waktu_bayi_lahir) {
+          const lahirInfo = formatRawDateTime(persalinan.tanggal_jam_waktu_bayi_lahir);
+          const val = (v) => (v !== null && v !== undefined ? v : "-");
+          processedData.infoLahir = [
+            `Tanggal ${lahirInfo.date} pukul ${lahirInfo.time} WIB`,
+            `bayi lahir spontan, menangis, jenis kelamin ${val(persalinan.jenis_kelamin)},`,
+            `BB ${val(persalinan.berat_badan)} kg, PB ${val(persalinan.panjang_badan)} cm, LD ${val(persalinan.lingkar_dada)} cm, LK ${val(persalinan.lingkar_kepala)} cm`,
+          ];
+        } else {
+            processedData.infoLahir = null;
+        }
         
         if(!catatanList) catatanList = [];
         catatanList.sort((a,b)=> new Date(a.waktu_catat) - new Date(b.waktu_catat));
@@ -335,7 +368,7 @@
             const diff = (new Date(c.waktu_catat) - start) / 3600000;
             const idx = xOffset + diff;
             
-            if(Math.abs(idx - Math.round(idx)) < 0.1) processedData.waktuLabels[Math.round(idx)] = fmt(c.waktu_catat).t;
+            if(Math.abs(idx - Math.round(idx)) < 0.1) processedData.waktuLabels[Math.round(idx)] = formatRawDateTime(c.waktu_catat).time;
             
             if(c.djj) processedData.djj.push({i:idx, v:c.djj});
             if(c.pembukaan_servik) processedData.pembukaan.push({i:idx, v:c.pembukaan_servik});
@@ -366,7 +399,6 @@
 
       function renderInfo() {
         const p = processedData.pasien;
-        // Render Identitas
         const regBox = document.getElementById("reg-box");
         regBox.innerHTML = "";
         (p.noRegistrasi||"").toString().split("").slice(0,8).forEach(char => {
@@ -377,7 +409,6 @@
              if(el) el.innerText = p[k] || "-";
         });
 
-        // Label Y Axis
         const drawY = (id, start, steps, stepVal, offset=0) => {
             let h = "";
             for(let i=0; i<=steps; i++) {
@@ -399,11 +430,14 @@
         const d = processedData;
         let currentY = TOP_MARGIN;
         
-        // SVG Structure
         let svg = `<svg width="${CHART_AREA_WIDTH}" height="${TOTAL_H + 20}" style="display:block; width:100%;">
             <defs>
                 <pattern id="stripes" patternUnits="userSpaceOnUse" width="4" height="4" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="4" stroke="#000" stroke-width="1" /></pattern>
                 <pattern id="dots" patternUnits="userSpaceOnUse" width="3" height="3"><circle cx="1.5" cy="1.5" r="0.8" fill="#000" /></pattern>
+                <filter id="bg-text" x="-0.1" y="-0.1" width="1.2" height="1.2">
+                    <feFlood flood-color="white" flood-opacity="0.85" result="bg" />
+                    <feMerge><feMergeNode in="bg"/><feMergeNode in="SourceGraphic"/></feMerge>
+                </filter>
             </defs>`;
 
         const grid = (cnt, cls="grid-line") => {
@@ -443,6 +477,19 @@
         const gY = (cm) => currentY + (10-cm)*UNIT_H;
         svg += `<line x1="0" y1="${gY(4)}" x2="${6*COL_W}" y2="${gY(10)}" stroke="#ca8a04" stroke-width="2" />`; 
         svg += `<line x1="${3.5*COL_W}" y1="${gY(4)}" x2="${9.5*COL_W}" y2="${gY(10)}" stroke="#dc2626" stroke-width="2" />`; 
+        
+        // --- RENDER DATA BAYI DIKEMBALIKAN DISINI ---
+        if (d.infoLahir) {
+          let textX = 12 * COL_W;
+          let textY = currentY + CER_H / 2;
+          svg += `<text x="${textX}" y="${textY}" text-anchor="middle" class="handwritten" font-size="14" filter="url(#bg-text)">`;
+          d.infoLahir.forEach((line, index) => {
+            let dy = index === 0 ? 0 : 20;
+            svg += `<tspan x="${textX}" dy="${dy}">${line}</tspan>`;
+          });
+          svg += `</text>`;
+        }
+        
         let cPts = "";
         d.pembukaan.forEach(p => {
             let x = p.i*COL_W; let y = gY(p.v); cPts += `${x},${y} `;
@@ -539,11 +586,12 @@
         document.getElementById("chart-svg-container").innerHTML = svg;
       }
 
-      function showToast(msg) {
+      function showToast(msg, ok=false) {
         const t = document.getElementById("toast-message");
-        t.innerText = msg;
+        document.getElementById("toast-text").innerText = msg;
+        t.className = `shadow-xl ${ok?'toast-success':'toast-error'} opacity-100`;
         t.style.opacity = 1;
-        setTimeout(() => t.style.opacity = 0, 3000);
+        setTimeout(() => t.style.opacity = 0, 4000);
       }
 
       async function downloadPDF(btn) {
