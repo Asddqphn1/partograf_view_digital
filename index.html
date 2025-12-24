@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Partograf Digital - Cetak A4</title>
+    <title>Partograf Digital - Cetak A4 Full</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <style>
@@ -39,9 +39,8 @@
       .header-input { border-bottom: 1px solid black; padding: 0 4px; white-space: nowrap; font-size: 14px; min-height: 20px; display: flex; align-items: end; }
 
       /* --- STYLE KHUSUS MODE EXPORT (PDF) --- */
-      /* Ini yang bikin tampilan PDF rapi & muat A4 */
       body.exporting {
-        width: 1150px !important; /* PAKSA lebar body agar html2canvas tidak memotong kanan */
+        width: 1150px !important; /* Force width agar kanan tidak terpotong */
         overflow: visible !important;
       }
       
@@ -52,20 +51,20 @@
         box-shadow: none !important;
       }
 
-      /* Merapikan Header di PDF agar lebih compact & professional */
+      /* Header di PDF - Sedikit lebih lega dari sebelumnya */
       body.exporting .header-container {
-        padding: 15px 20px !important;
+        padding: 20px 25px !important; /* Padding sedikit ditambah */
         border-bottom: 2px solid black !important;
       }
-      body.exporting .header-row { margin-bottom: 8px; }
-      body.exporting .header-label { font-size: 11px; font-family: 'Times New Roman', serif; }
-      body.exporting .header-input { font-size: 12px; height: 18px; border-bottom: 1px dotted #000; } /* Garis putus-putus terlihat lebih rapi di print */
-      body.exporting .reg-box-item { width: 20px; height: 20px; font-size: 12px; }
-      body.exporting #title-header { font-size: 20px; margin-bottom: 10px; text-decoration: underline; }
+      body.exporting .header-row { margin-bottom: 10px; }
+      body.exporting .header-label { font-size: 12px; font-family: 'Times New Roman', serif; }
+      body.exporting .header-input { font-size: 13px; height: 20px; border-bottom: 1px dotted #000; }
+      body.exporting .reg-box-item { width: 22px; height: 22px; font-size: 13px; }
+      body.exporting #title-header { font-size: 24px; margin-bottom: 15px; text-decoration: underline; }
 
-      /* Merapikan font grafik di PDF */
+      /* Font grafik di PDF */
       body.exporting .label-axis, 
-      body.exporting .label-waktu { font-size: 9px; } 
+      body.exporting .label-waktu { font-size: 10px; } 
 
       /* UI Elements */
       .legend-box { width: 12px; height: 12px; border: 1px solid black; display: inline-block; vertical-align: middle; margin-right: 4px; }
@@ -89,7 +88,7 @@
 
     <button onclick="downloadPDF(this)" id="btn-download" class="fab-download hidden">
       <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
-      Simpan PDF (A4)
+      Simpan PDF (A4 Full)
     </button>
     <div id="pdf-status" class="fab-download hidden disabled" style="right: 30px; bottom: 30px; background-color: #3b82f6;">
       <div class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
@@ -206,7 +205,7 @@
     </div>
 
     <script>
-      // --- KONFIGURASI DIMENSI (LOGIKA WEB TETAP 1100px) ---
+      // --- KONFIGURASI DIMENSI ---
       const TOTAL_CONTAINER_WIDTH = 1100; 
       const LEFT_LABEL_WIDTH = 140;
       const CHART_AREA_WIDTH = TOTAL_CONTAINER_WIDTH - LEFT_LABEL_WIDTH;
@@ -214,7 +213,7 @@
       const COL_W = CHART_AREA_WIDTH / COLS;
       const UNIT_W = COL_W / 2;
 
-      // Tinggi Row (Unit)
+      // Layout Rows
       const DJJ_STEPS = 12;
       const MID_ROWS = 2;
       const CER_ROWS = 10;
@@ -227,11 +226,13 @@
       // Fungsi Mengatur Ukuran Vertikal
       function updateDimensions(isExport = false) {
         if (isExport) {
-          // --- MODE EXPORT (Dipadatkan agar muat A4) ---
-          UNIT_H = 17.5; // Unit height dikompres sedikit
-          TOP_MARGIN = 10;
-          TIME_H = 45; 
-          OBAT_H = 50; 
+          // --- MODE EXPORT (Diperpanjang agar memenuhi A4) ---
+          // Sebelumnya 17.5px, sekarang kita naikkan jadi 20.5px
+          // Ini akan memanjangkan grafik ke bawah sekitar ~150px totalnya.
+          UNIT_H = 20.5; 
+          TOP_MARGIN = 15;
+          TIME_H = 55; // Agak direnggangkan
+          OBAT_H = 60; // Agak direnggangkan
           document.body.classList.add('exporting');
         } else {
           // --- MODE NORMAL (Web View lega) ---
@@ -548,12 +549,10 @@
       async function downloadPDF(btn) {
         if(btn.classList.contains("disabled")) return;
 
-        // 1. Ubah ke Tampilan Export (Padat & Rapi)
-        updateDimensions(true);
+        updateDimensions(true); // MODE EXPORT
         renderInfo();
         renderChart();
         
-        // 2. SCROLL KE ATAS (Penting agar header tercapture)
         window.scrollTo(0, 0);
         await new Promise(r => setTimeout(r, 600));
 
@@ -570,8 +569,7 @@
           html2canvas: { 
             scale: 2, 
             useCORS: true,
-            // KUNCI: Paksa window width lebih lebar dari konten agar tidak tercrop
-            windowWidth: 1200, 
+            windowWidth: 1200, // KUNCI AGAR TIDAK KEPOTONG KANAN
             width: 1200 
           },
           jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
@@ -596,7 +594,7 @@
       function resetView() {
         document.getElementById("pdf-status").classList.add("hidden");
         document.getElementById("btn-download").classList.remove("hidden");
-        updateDimensions(false); // Kembali ke tampilan Web yang lega
+        updateDimensions(false); 
         renderInfo();
         renderChart();
       }
