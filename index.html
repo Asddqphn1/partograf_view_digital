@@ -3,143 +3,152 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Partograf Digital API - Tampilan Final</title>
+    <title>Partograf Digital - Cetak A4</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <style>
       body { font-family: "Arial", sans-serif; }
       * { box-sizing: border-box; }
 
-      /* Grid Styling */
+      /* --- STYLE DASAR (WEB VIEW) --- */
       .grid-line { stroke: #000; stroke-width: 1; shape-rendering: crispEdges; }
       .grid-line-thick { stroke: #000; stroke-width: 2; shape-rendering: crispEdges; }
       .grid-line-major { stroke: #000; stroke-width: 1.2; shape-rendering: crispEdges; }
       .grid-line-minor { stroke: #9ca3af; stroke-width: 0.8; shape-rendering: crispEdges; }
 
-      /* Typography */
       .label-axis { font-size: 10px; font-weight: bold; }
       .label-waktu { font-size: 11px; font-weight: bold; }
       .data-text { font-size: 13px; font-weight: bold; font-family: sans-serif; }
-      .handwritten { font-family: "Verdana", "Segoe UI", sans-serif; fill: #0000ff; font-weight: 700; color: #0000ff; }
+      .handwritten { font-family: "Courier New", Courier, monospace; fill: #0000ff; font-weight: 700; color: #1d4ed8; letter-spacing: 0.5px; }
 
-      /* Layout Default */
+      /* Container Utama (Tetap 1100px agar logika plot tidak berubah) */
       .main-container {
-        width: 1100px; /* Lebar tetap agar grafik SVG presisi */
+        width: 1100px; 
         margin: 0 auto;
         background: white;
         border: 1px solid #e5e7eb;
+        position: relative;
       }
+      
       .chart-row { display: flex; width: 100%; }
       .y-axis-col { flex: none; width: 140px; border-right: 1px solid #000; background: white; z-index: 10; position: relative; }
       .chart-area-col { flex: 1; position: relative; }
-      .header-label { font-weight: bold; color: #1f2937; white-space: nowrap; font-size: 13px; }
-      .header-input { border-bottom: 1px solid black; padding: 0 0.5rem; white-space: nowrap; font-size: 14px; }
-
-      /* MODE EXPORT (Dipicu lewat class di body) */
-      body.exporting .main-container {
-        border: none;
-        box-shadow: none;
-        margin: 0;
-      }
-      body.exporting .header-container {
-        padding: 10px !important; /* Rapatkan padding header */
-        border-bottom: 1px solid black;
-      }
-      body.exporting .header-label { font-size: 10px; } /* Kecilkan font header */
-      body.exporting .header-input { font-size: 11px; height: 16px; }
-      body.exporting .label-axis, 
-      body.exporting .label-waktu { font-size: 9px; } /* Kecilkan label grafik */
       
-      /* Legend & Patterns */
-      .legend-box { width: 12px; height: 12px; border: 1px solid black; display: inline-block; vertical-align: middle; margin-right: 4px; }
+      /* Header Styles */
+      .header-label { font-weight: bold; color: #1f2937; white-space: nowrap; font-size: 13px; }
+      .header-input { border-bottom: 1px solid black; padding: 0 4px; white-space: nowrap; font-size: 14px; min-height: 20px; display: flex; align-items: end; }
 
-      /* UI Elements (Loader, Toast, Button) */
-      #loading-screen { position: fixed; inset: 0; background: rgba(255, 255, 255, 0.9); display: flex; justify-content: center; align-items: center; z-index: 50; }
-      .fab-download { position: fixed; bottom: 30px; right: 30px; background-color: #10b981; color: white; padding: 12px 24px; border-radius: 50px; box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3); font-weight: bold; cursor: pointer; z-index: 100; display: flex; align-items: center; gap: 8px; }
-      .fab-download:hover { background-color: #059669; transform: scale(1.05); }
-      .fab-download svg { width: 20px; height: 20px; }
-      .fab-download.disabled { background-color: #9ca3af; cursor: not-allowed; transform: none; }
-      #toast-message { position: fixed; bottom: 10px; left: 50%; transform: translateX(-50%); z-index: 200; opacity: 0; pointer-events: none; transition: opacity 0.3s; padding: 12px; border-radius: 8px; background-color: #333; color: white; }
-      .toast-success { background-color: #d1fae5; border: 1px solid #34d399; color: #065f46; }
-      .toast-error { background-color: #fee2e2; border: 1px solid #f87171; color: #991b1b; }
+      /* --- STYLE KHUSUS MODE EXPORT (PDF) --- */
+      /* Ini yang bikin tampilan PDF rapi & muat A4 */
+      body.exporting {
+        width: 1150px !important; /* PAKSA lebar body agar html2canvas tidak memotong kanan */
+        overflow: visible !important;
+      }
+      
+      body.exporting .main-container {
+        border: none !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        box-shadow: none !important;
+      }
+
+      /* Merapikan Header di PDF agar lebih compact & professional */
+      body.exporting .header-container {
+        padding: 15px 20px !important;
+        border-bottom: 2px solid black !important;
+      }
+      body.exporting .header-row { margin-bottom: 8px; }
+      body.exporting .header-label { font-size: 11px; font-family: 'Times New Roman', serif; }
+      body.exporting .header-input { font-size: 12px; height: 18px; border-bottom: 1px dotted #000; } /* Garis putus-putus terlihat lebih rapi di print */
+      body.exporting .reg-box-item { width: 20px; height: 20px; font-size: 12px; }
+      body.exporting #title-header { font-size: 20px; margin-bottom: 10px; text-decoration: underline; }
+
+      /* Merapikan font grafik di PDF */
+      body.exporting .label-axis, 
+      body.exporting .label-waktu { font-size: 9px; } 
+
+      /* UI Elements */
+      .legend-box { width: 12px; height: 12px; border: 1px solid black; display: inline-block; vertical-align: middle; margin-right: 4px; }
+      #loading-screen { position: fixed; inset: 0; background: rgba(255,255,255,0.95); display: flex; justify-content: center; align-items: center; z-index: 50; }
+      .fab-download { position: fixed; bottom: 30px; right: 30px; background-color: #10b981; color: white; padding: 12px 24px; border-radius: 50px; box-shadow: 0 4px 15px rgba(0,0,0,0.3); font-weight: bold; cursor: pointer; z-index: 100; display: flex; gap: 8px; align-items: center; transition: all 0.2s; }
+      .fab-download:hover { transform: scale(1.05); background-color: #059669; }
+      .fab-download.disabled { background-color: #9ca3af; transform: none; cursor: wait; }
+      #toast-message { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: #333; color: white; padding: 10px 20px; border-radius: 8px; opacity: 0; transition: opacity 0.3s; z-index: 200; font-size: 14px; }
     </style>
   </head>
-  <body class="bg-gray-50 min-h-screen p-4 overflow-x-auto">
+  <body class="bg-gray-100 min-h-screen p-4 overflow-x-auto">
+    
     <div id="loading-screen">
       <div class="text-center">
-        <div class="w-16 h-16 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-        <h2 class="text-xl font-bold text-gray-800">Memuat Data...</h2>
+        <div class="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-3"></div>
+        <h2 class="text-lg font-bold text-gray-700">Memuat Data...</h2>
       </div>
     </div>
-    <div id="error-screen" class="hidden fixed inset-0 bg-white z-50 flex justify-center items-center">
-        <div class="text-center max-w-md p-6 bg-red-50 border border-red-200 rounded-lg">
-            <h2 class="text-xl font-bold text-red-700 mb-2">Gagal Memuat</h2>
-            <p id="error-msg" class="text-red-600 text-sm"></p>
-        </div>
-    </div>
-
-    <div id="toast-message" class="shadow-xl"><p id="toast-text" class="text-sm"></p></div>
+    
+    <div id="toast-message"></div>
 
     <button onclick="downloadPDF(this)" id="btn-download" class="fab-download hidden">
-      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
-      Export PDF (A4)
+      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+      Simpan PDF (A4)
     </button>
-    <div id="pdf-status" class="fab-download hidden disabled" style="background-color: #3b82f6; right: 30px; bottom: 30px">
+    <div id="pdf-status" class="fab-download hidden disabled" style="right: 30px; bottom: 30px; background-color: #3b82f6;">
       <div class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-      <span id="status-text">Memproses PDF...</span>
+      <span>Memproses PDF...</span>
     </div>
 
     <div class="main-container hidden" id="content-container">
+      
       <div class="p-6 bg-white w-full border-b-2 border-black header-container">
-        <div class="flex justify-center mb-4 relative">
-          <h1 class="text-2xl font-extrabold uppercase tracking-[0.2em]" id="title-header">PARTOGRAF</h1>
-        </div>
-        <div class="flex flex-col gap-3 text-sm w-full">
-          <div class="flex items-end w-full">
-            <div class="flex items-center flex-none mr-4">
-              <span class="header-label w-24">No. Registrasi</span>
+        <h1 class="text-2xl font-black text-center mb-6 tracking-widest uppercase" id="title-header">Partograf Persalinan</h1>
+        
+        <div class="flex flex-col gap-3 w-full text-sm">
+          <div class="flex items-end w-full header-row">
+            <div class="flex items-center mr-6">
+              <span class="header-label w-24">No. Registrasi:</span>
               <div class="flex border border-black" id="reg-box"></div>
             </div>
-            <div class="flex flex-1 items-end gap-4">
+            <div class="flex flex-1 gap-4">
               <div class="flex items-end flex-1">
                 <span class="header-label mr-2">Nama Ibu:</span>
-                <div class="flex-1 header-input handwritten" id="nama-val">-</div>
+                <div class="flex-1 header-input handwritten pl-2" id="nama-val"></div>
               </div>
-              <div class="flex items-end w-24 flex-none">
+              <div class="flex items-end w-24">
                 <span class="header-label mr-2">Umur:</span>
-                <div class="flex-1 header-input handwritten text-center" id="umur-val">-</div>
+                <div class="flex-1 header-input handwritten text-center" id="umur-val"></div>
               </div>
-              <div class="flex items-end gap-2 flex-none">
-                 <span class="header-label">G:</span><div class="border-b border-black w-6 handwritten text-center" id="g-val">-</div>
-                 <span class="header-label">P:</span><div class="border-b border-black w-6 handwritten text-center" id="p-val">-</div>
-                 <span class="header-label">A:</span><div class="border-b border-black w-6 handwritten text-center" id="a-val">-</div>
+              <div class="flex items-end gap-3">
+                 <div class="flex items-end"><span class="header-label mr-1">G:</span><div class="header-input w-8 justify-center handwritten" id="g-val"></div></div>
+                 <div class="flex items-end"><span class="header-label mr-1">P:</span><div class="header-input w-8 justify-center handwritten" id="p-val"></div></div>
+                 <div class="flex items-end"><span class="header-label mr-1">A:</span><div class="header-input w-8 justify-center handwritten" id="a-val"></div></div>
               </div>
             </div>
           </div>
-          <div class="flex items-end w-full">
-            <div class="flex items-end flex-none mr-4 w-[300px]">
-              <span class="header-label w-24">No. Puskesmas</span>
+
+          <div class="flex items-end w-full header-row">
+            <div class="flex items-end mr-6 w-[320px]">
+              <span class="header-label w-24 flex-none">Puskesmas:</span>
               <div class="flex-1 header-input handwritten" id="puskesmas-val"></div>
             </div>
-            <div class="flex flex-1 items-end gap-4">
+            <div class="flex flex-1 gap-4">
               <div class="flex items-end flex-1">
-                <span class="header-label mr-2">Tanggal:</span>
-                <div class="flex-1 header-input handwritten" id="tanggal-val">-</div>
+                <span class="header-label mr-2">Tanggal Masuk:</span>
+                <div class="flex-1 header-input handwritten pl-2" id="tanggal-val"></div>
               </div>
-              <div class="flex items-end w-32 flex-none">
+              <div class="flex items-end w-40">
                 <span class="header-label mr-2">Jam:</span>
-                <div class="flex-1 header-input handwritten text-center" id="jam-val">-</div>
+                <div class="flex-1 header-input handwritten text-center" id="jam-val"></div>
               </div>
             </div>
           </div>
-          <div class="flex items-end w-full">
-            <div class="flex items-end flex-none mr-4 w-[400px]">
-              <span class="header-label w-28">Ketuban Pecah</span><span class="header-label mr-2">Sejak Jam:</span>
-              <div class="flex-1 header-input handwritten" id="ketuban-val">-</div>
+
+          <div class="flex items-end w-full header-row">
+            <div class="flex items-end mr-6 w-[450px]">
+              <span class="header-label w-28 flex-none">Ketuban Pecah:</span>
+              <div class="flex-1 header-input handwritten pl-2" id="ketuban-val"></div>
             </div>
             <div class="flex items-end flex-1">
-              <span class="header-label mr-2">Mules Sejak Jam:</span>
-              <div class="flex-1 header-input handwritten" id="mules-val">-</div>
+              <span class="header-label mr-2">Mules Sejak:</span>
+              <div class="flex-1 header-input handwritten pl-2" id="mules-val"></div>
             </div>
           </div>
         </div>
@@ -147,29 +156,38 @@
 
       <div class="chart-row bg-white">
         <div class="y-axis-col">
-          <div id="label-djj-area" class="relative border-b border-black w-full"><div class="absolute left-2 top-1/2 -translate-y-1/2 font-bold text-[10px] leading-tight">Denyut<br />Jantung<br />Janin<br />( /Menit)</div><div id="y-axis-djj" class="absolute right-0 top-0 w-8 h-full pointer-events-none"></div></div>
-          <div id="label-middle-area" class="relative border-b border-black w-full flex flex-col font-bold text-[10px]"><div class="flex-1 flex items-center justify-end pr-2 border-b border-gray-300">Air Ketuban</div><div class="flex-1 flex items-center justify-end pr-2">Penyusupan</div></div>
+          <div id="label-djj-area" class="relative border-b border-black w-full">
+            <div class="absolute left-2 top-1/2 -translate-y-1/2 font-bold text-[10px] leading-tight">Denyut<br />Jantung<br />Janin<br />(/mnt)</div>
+            <div id="y-axis-djj" class="absolute right-0 top-0 w-8 h-full pointer-events-none"></div>
+          </div>
+          <div id="label-middle-area" class="relative border-b border-black w-full flex flex-col font-bold text-[10px]">
+            <div class="flex-1 flex items-center justify-end pr-2 border-b border-gray-300">Air Ketuban</div>
+            <div class="flex-1 flex items-center justify-end pr-2">Penyusupan</div>
+          </div>
           <div id="label-cervix-area" class="relative w-full border-b border-black">
-            <div class="absolute -left-8 top-1/2 -translate-y-1/2 -rotate-90 font-bold text-[10px] text-center leading-tight w-64">Pembukaan Serviks (cm) beri tanda <span class="text-purple-700 text-lg">X</span><br />Turunnya Kepala beri tanda <span class="text-green-600 text-lg">O</span></div>
-            <div class="absolute -left-12 top-1/2 -translate-y-1/2 -rotate-90 text-[10px] font-bold text-center w-32">Sentimeter (cm)</div>
+            <div class="absolute -left-10 top-1/2 -translate-y-1/2 -rotate-90 font-bold text-[10px] text-center w-64 leading-tight">
+              Pembukaan (X) <span class="text-gray-400">|</span> Penurunan (O)
+            </div>
             <div class="absolute right-8 top-2 bottom-2 border-l-2 border-t-2 border-b-2 border-black w-2"></div>
             <div id="y-axis-cervix" class="absolute right-0 top-0 w-8 h-full pointer-events-none"></div>
           </div>
-          <div id="label-time-area" class="w-full flex flex-col justify-end items-end pr-2 pb-2 text-[10px] font-bold border-b border-black"><div class="h-[30px] flex items-center">Waktu (Jam)</div></div>
+          <div id="label-time-area" class="w-full flex flex-col justify-end items-end pr-2 pb-2 text-[10px] font-bold border-b border-black">
+            <div class="h-[30px] flex items-center">Waktu (Jam)</div>
+          </div>
           <div id="label-kontraksi-area" class="relative w-full border-b border-black flex">
             <div class="w-20 pl-1 flex flex-col justify-center gap-1 text-[9px] font-bold">
-              <div class="mb-1 leading-none">Kontraksi<br />tiap<br />10 menit</div>
+              <div class="mb-1 leading-none">Kontraksi<br />per<br />10 mnt</div>
               <div class="flex items-center"><div class="legend-box" style="background-image: radial-gradient(black 1px, transparent 1px); background-size: 3px 3px;"></div> < 20</div>
               <div class="flex items-center"><div class="legend-box" style="background: repeating-linear-gradient(45deg, white, white 2px, black 2px, black 3px);"></div> 20-40</div>
               <div class="flex items-center"><div class="legend-box bg-black"></div> > 40</div>
             </div>
             <div class="flex-1 flex flex-col justify-between items-end pr-2 py-0 font-bold text-[10px] relative" id="y-axis-kontraksi"></div>
           </div>
-          <div id="label-obat-area" class="relative w-full border-b border-black flex items-center justify-end pr-2 text-[10px] font-bold leading-tight text-right">Obat dan<br />cairan IV</div>
+          <div id="label-obat-area" class="relative w-full border-b border-black flex items-center justify-end pr-2 text-[10px] font-bold leading-tight text-right">Oksitosin<br />Obat IV</div>
           <div id="label-vitals-area" class="relative w-full border-b border-black flex">
             <div class="w-16 pl-2 flex flex-col justify-center gap-2 text-[10px] font-bold border-r border-transparent">
               <div class="flex items-center gap-1"><span class="text-lg leading-none">•</span> Nadi</div>
-              <div class="flex items-center gap-1"><span class="text-base leading-none">↕</span> Tekanan<br />Darah</div>
+              <div class="flex items-center gap-1"><span class="text-base leading-none">↕</span> TD</div>
             </div>
             <div class="flex-1 flex flex-col justify-between items-end pr-2 py-0 font-bold text-[10px] relative" id="y-axis-vitals"></div>
           </div>
@@ -184,19 +202,19 @@
           <div id="chart-svg-container" class="w-full h-full"></div>
         </div>
       </div>
-      <div class="bg-gray-50 p-2 border-t border-gray-200 text-center text-[10px] text-gray-500 version-footer">Partograf Digital API v1.7 (Auto-Fit A4)</div>
+      <div class="bg-white p-2 text-right text-[9px] text-gray-400 italic">Dicetak otomatis oleh Sistem Partograf Digital</div>
     </div>
 
     <script>
-      // --- 1. KONFIGURASI TAMPILAN ---
-      const TOTAL_CONTAINER_WIDTH = 1100; // Lebar "Canvas" HTML (bukan lebar PDF)
+      // --- KONFIGURASI DIMENSI (LOGIKA WEB TETAP 1100px) ---
+      const TOTAL_CONTAINER_WIDTH = 1100; 
       const LEFT_LABEL_WIDTH = 140;
       const CHART_AREA_WIDTH = TOTAL_CONTAINER_WIDTH - LEFT_LABEL_WIDTH;
       const COLS = 16;
       const COL_W = CHART_AREA_WIDTH / COLS;
       const UNIT_W = COL_W / 2;
-      
-      // Jumlah baris tetap
+
+      // Tinggi Row (Unit)
       const DJJ_STEPS = 12;
       const MID_ROWS = 2;
       const CER_ROWS = 10;
@@ -206,31 +224,24 @@
 
       let UNIT_H, DJJ_H, MID_H, CER_H, TIME_H, KONTRAKSI_H, OBAT_H, VITALS_H, SUHU_H, URINE_H, TOTAL_H, TOP_MARGIN;
 
+      // Fungsi Mengatur Ukuran Vertikal
       function updateDimensions(isExport = false) {
         if (isExport) {
-          // --- SETTINGAN MODE EXPORT (AGAR MUAT 1 HALAMAN) ---
-          // Kita kecilkan tinggi per unit secara agresif
-          // Total unit vertikal ada sekitar 45 baris. 
-          // 45 baris x 17px = 765px. Ditambah header, pas untuk A4 (tinggi ~1123px di 96dpi)
-          
-          UNIT_H = 17; 
+          // --- MODE EXPORT (Dipadatkan agar muat A4) ---
+          UNIT_H = 17.5; // Unit height dikompres sedikit
           TOP_MARGIN = 10;
-          TIME_H = 40;  // Area waktu diperkecil
-          OBAT_H = 45;  // Area obat diperkecil
-          
-          // Tambahkan class ke body untuk styling CSS khusus export
+          TIME_H = 45; 
+          OBAT_H = 50; 
           document.body.classList.add('exporting');
         } else {
-          // --- SETTINGAN NORMAL (WEB/HP) ---
+          // --- MODE NORMAL (Web View lega) ---
           UNIT_H = 30; 
           TOP_MARGIN = 15;
           TIME_H = 65; 
           OBAT_H = 80;
-          
           document.body.classList.remove('exporting');
         }
 
-        // Hitung Tinggi Total
         DJJ_H = DJJ_STEPS * UNIT_H;
         MID_H = MID_ROWS * UNIT_H;
         CER_H = CER_ROWS * UNIT_H;
@@ -238,14 +249,10 @@
         VITALS_H = VITALS_STEPS * UNIT_H;
         SUHU_H = UNIT_H;
         URINE_H = URINE_ROWS * UNIT_H;
-
+        
         TOTAL_H = TOP_MARGIN + DJJ_H + MID_H + CER_H + TIME_H + KONTRAKSI_H + OBAT_H + VITALS_H + SUHU_H + URINE_H;
 
-        // Terapkan ke DOM
-        const setH = (id, val) => {
-             const el = document.getElementById(id);
-             if(el) el.style.height = `${val}px`;
-        };
+        const setH = (id, val) => { const el=document.getElementById(id); if(el) el.style.height = val+"px"; };
         setH("label-djj-area", DJJ_H + TOP_MARGIN);
         setH("label-middle-area", MID_H);
         setH("label-cervix-area", CER_H);
@@ -257,16 +264,11 @@
         setH("label-urine-area", URINE_H);
       }
 
-      // --- 2. DATA PROCESSING (API & Dummy) ---
-      let processedData = {
-        pasien: {},
-        djj: [], nadi: [], kontraksi: [], bp: [], pembukaan: [], penurunan: [],
-        ketuban: [], penyusupan: [], suhu: [], urine: [], waktuLabels: {}, infoLahir: null
-      };
+      // --- DATA & API ---
+      let processedData = { pasien: {}, djj: [], nadi: [], kontraksi: [], bp: [], pembukaan: [], penurunan: [], ketuban: [], penyusupan: [], suhu: [], urine: [], waktuLabels: {}, infoLahir: null };
 
-      // (Fungsi getDummyPasien & getDummyCatatan SAMA SEPERTI KODE LAMA ANDA - DISINGKAT DISINI UNTUK HEMAT TEMPAT)
-      function getDummyPasien() { return { no_reg: "12345678", nama: "Ny. Contoh", umur: 28, gravida: 2, paritas: 1, abortus: 0, persalinan: [{ tanggal_jam_rawat: "2023-10-27T08:00:00", tanggal_jam_mules: "2023-10-27T04:00:00", ketuban_pecah: false, status: "selesai" }] }; }
-      function getDummyCatatan() { return [{ waktu_catat: "2023-10-27T08:00:00", pembukaan_servik: 4, penurunan_kepala: 4, djj: 140, nadi_ibu: 80, sistolik: 110, diastolik: 70, suhu_ibu: 36.5, air_ketuban: "J", molase: "0", kontraksi: [{ waktu_mulai: "2023-10-27T08:00:00", waktu_selesai: "2023-10-27T08:00:30" }, { waktu_mulai: "2023-10-27T08:00:00", waktu_selesai: "2023-10-27T08:00:30" }, { waktu_mulai: "2023-10-27T08:00:00", waktu_selesai: "2023-10-27T08:00:30" }] }]; }
+      function getDummyPasien() { return { no_reg: "12345678", nama: "Ny. Contoh (Dummy)", umur: 28, gravida: 2, paritas: 1, abortus: 0, persalinan: [{ tanggal_jam_rawat: "2023-10-27T08:00:00", tanggal_jam_mules: "2023-10-27T04:00:00", ketuban_pecah: false, status: "selesai" }] }; }
+      function getDummyCatatan() { return [{ waktu_catat: "2023-10-27T08:00:00", pembukaan_servik: 4, penurunan_kepala: 4, djj: 140, nadi_ibu: 80, sistolik: 110, diastolik: 70, suhu_ibu: 36.5, air_ketuban: "J", molase: "0", kontraksi: [{ waktu_mulai: "2023-10-27T08:00:00", waktu_selesai: "2023-10-27T08:00:30" }] }]; }
 
       async function fetchData() {
         const params = new URLSearchParams(window.location.search);
@@ -277,7 +279,6 @@
         updateDimensions(false); // Init ukuran normal
 
         if (!token || !no_reg || !partograf_id) {
-          console.warn("Mode Dummy Data");
           processApiData(getDummyPasien(), getDummyCatatan());
           finalizeLoad();
           return;
@@ -285,25 +286,21 @@
 
         const headers = { Authorization: `Bearer ${token}`, "Content-Type": "application/json" };
         try {
-          const pRes = await fetch(`https://restful-api-bmc-production-v2.up.railway.app/api/pasien/${no_reg}/getData`, { headers });
-          if(!pRes.ok) throw new Error("Gagal load pasien");
+          const [pRes, cRes] = await Promise.all([
+             fetch(`https://restful-api-bmc-production-v2.up.railway.app/api/pasien/${no_reg}/getData`, { headers }),
+             fetch(`https://restful-api-bmc-production-v2.up.railway.app/api/partograf/${partograf_id}/catatan`, { headers })
+          ]);
+          if(!pRes.ok || !cRes.ok) throw new Error("Gagal mengambil data");
           const pJson = await pRes.json();
-
-          const cRes = await fetch(`https://restful-api-bmc-production-v2.up.railway.app/api/partograf/${partograf_id}/catatan`, { headers });
-          if(!cRes.ok) throw new Error("Gagal load catatan");
           const cJson = await cRes.json();
-
           processApiData(pJson.data, cJson.data);
           finalizeLoad();
         } catch (err) {
-          document.getElementById("loading-screen").classList.add("hidden");
-          document.getElementById("error-screen").classList.remove("hidden");
-          document.getElementById("error-msg").innerText = err.message;
+          document.getElementById("loading-screen").innerHTML = `<div class='text-red-600 font-bold'>Error: ${err.message}</div>`;
         }
       }
 
       function processApiData(pasien, catatanList) {
-        // (LOGIKA SAMA SEPERTI KODE SEBELUMNYA)
         const persalinan = pasien.persalinan[0] || {};
         const fmt = (iso) => {
             if(!iso) return {d:"-",t:"-"};
@@ -317,7 +314,7 @@
 
         const rawat = fmt(persalinan.tanggal_jam_rawat);
         const mules = fmt(persalinan.tanggal_jam_mules);
-        const pecah = persalinan.ketuban_pecah ? fmt(persalinan.tanggal_jam_ketuban_pecah).t + " WIB" : "Belum";
+        const pecah = persalinan.ketuban_pecah ? fmt(persalinan.tanggal_jam_ketuban_pecah).t + " WIB" : "Belum Pecah";
 
         processedData.pasien = {
             noRegistrasi: pasien.no_reg, nama: pasien.nama, umur: `${pasien.umur} th`,
@@ -325,7 +322,6 @@
             tanggal: rawat.d, jam: rawat.t + " WIB", ketuban: pecah, mules: mules.t + " WIB"
         };
         
-        // Logika Chart Mapping (Sama persis dengan kode lama, disederhanakan di sini)
         if(!catatanList) catatanList = [];
         catatanList.sort((a,b)=> new Date(a.waktu_catat) - new Date(b.waktu_catat));
         
@@ -352,10 +348,9 @@
             if(c.aseton) processedData.urine.push({i:idx, type:"aseton", val:c.aseton});
             if(c.volume_urine) processedData.urine.push({i:idx, type:"volume", val:c.volume_urine});
 
-            // Kontraksi logic simpel
             let f=0, d=0;
             if(c.kontraksi_frekuensi) { f=parseInt(c.kontraksi_frekuensi); d=parseInt(c.kontraksi_durasi||0); }
-            else if(c.kontraksi?.length) { f=c.kontraksi.length; d=25; /* rata-rata dummy */ }
+            else if(c.kontraksi?.length) { f=c.kontraksi.length; d=25; }
             if(f>0) processedData.kontraksi.push({i:idx, f:f, d:d});
         });
       }
@@ -374,14 +369,14 @@
         const regBox = document.getElementById("reg-box");
         regBox.innerHTML = "";
         (p.noRegistrasi||"").toString().split("").slice(0,8).forEach(char => {
-            regBox.innerHTML += `<div class="w-6 h-6 flex items-center justify-center border-r border-black last:border-r-0 bg-gray-50 font-bold text-base">${char}</div>`;
+            regBox.innerHTML += `<div class="reg-box-item w-6 h-6 flex items-center justify-center border-r border-black last:border-r-0 bg-gray-50 font-bold text-base">${char}</div>`;
         });
-        ["nama","umur","g","p","a","tanggal","jam","ketuban","mules"].forEach(k => {
+        ["nama","umur","g","p","a","tanggal","jam","ketuban","mules","puskesmas"].forEach(k => {
              const el = document.getElementById(k+"-val");
-             if(el) el.innerText = p[k];
+             if(el) el.innerText = p[k] || "-";
         });
 
-        // Render Y-Axis Labels (Dinamis sesuai UNIT_H)
+        // Label Y Axis
         const drawY = (id, start, steps, stepVal, offset=0) => {
             let h = "";
             for(let i=0; i<=steps; i++) {
@@ -403,14 +398,13 @@
         const d = processedData;
         let currentY = TOP_MARGIN;
         
-        // Setup SVG
+        // SVG Structure
         let svg = `<svg width="${CHART_AREA_WIDTH}" height="${TOTAL_H + 20}" style="display:block; width:100%;">
             <defs>
                 <pattern id="stripes" patternUnits="userSpaceOnUse" width="4" height="4" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="4" stroke="#000" stroke-width="1" /></pattern>
                 <pattern id="dots" patternUnits="userSpaceOnUse" width="3" height="3"><circle cx="1.5" cy="1.5" r="0.8" fill="#000" /></pattern>
             </defs>`;
 
-        // Helper Grid
         const grid = (cnt, cls="grid-line") => {
             let s = "";
             for(let i=0; i<=cnt; i++) {
@@ -429,10 +423,8 @@
         }
         let dPts = "";
         d.djj.forEach(p => {
-            let x = p.i * COL_W;
-            let y = currentY + ((200-p.v)/10)*UNIT_H;
-            dPts += `${x},${y} `;
-            svg += `<circle cx="${x}" cy="${y}" r="2.5" fill="#2563eb" />`;
+            let x = p.i * COL_W; let y = currentY + ((200-p.v)/10)*UNIT_H; dPts += `${x},${y} `;
+            svg += `<circle cx="${x}" cy="${y}" r="3" fill="#2563eb" />`;
         });
         if(dPts) svg += `<polyline points="${dPts}" fill="none" stroke="#2563eb" stroke-width="2" />`;
         currentY += DJJ_H;
@@ -447,23 +439,21 @@
         // 3. Serviks
         svg += `<line x1="0" y1="${currentY}" x2="${CHART_AREA_WIDTH}" y2="${currentY}" class="grid-line-thick" />`;
         svg += grid(CER_ROWS);
-        // Garis Alert & Action
         const gY = (cm) => currentY + (10-cm)*UNIT_H;
-        svg += `<line x1="0" y1="${gY(4)}" x2="${6*COL_W}" y2="${gY(10)}" stroke="#ca8a04" stroke-width="2" />`; // Alert
-        svg += `<line x1="${3.5*COL_W}" y1="${gY(4)}" x2="${9.5*COL_W}" y2="${gY(10)}" stroke="#dc2626" stroke-width="2" />`; // Action
-        // Data Serviks & Penurunan
+        svg += `<line x1="0" y1="${gY(4)}" x2="${6*COL_W}" y2="${gY(10)}" stroke="#ca8a04" stroke-width="2" />`; 
+        svg += `<line x1="${3.5*COL_W}" y1="${gY(4)}" x2="${9.5*COL_W}" y2="${gY(10)}" stroke="#dc2626" stroke-width="2" />`; 
         let cPts = "";
         d.pembukaan.forEach(p => {
             let x = p.i*COL_W; let y = gY(p.v); cPts += `${x},${y} `;
-            svg += `<g transform="translate(${x},${y})"><line x1="-4" y1="-4" x2="4" y2="4" stroke="purple" stroke-width="2"/><line x1="4" y1="-4" x2="-4" y2="4" stroke="purple" stroke-width="2"/></g>`;
+            svg += `<g transform="translate(${x},${y})"><line x1="-5" y1="-5" x2="5" y2="5" stroke="#ef4444" stroke-width="2.5"/><line x1="5" y1="-5" x2="-5" y2="5" stroke="#ef4444" stroke-width="2.5"/></g>`;
         });
-        if(cPts) svg += `<polyline points="${cPts}" fill="none" stroke="purple" stroke-width="1.5" />`;
+        if(cPts) svg += `<polyline points="${cPts}" fill="none" stroke="#ef4444" stroke-width="1.5" />`;
         let pPts = "";
         d.penurunan.forEach(p => {
              let x = p.i*COL_W; let y = gY(p.v); pPts += `${x},${y} `;
-             svg += `<circle cx="${x}" cy="${y}" r="4" fill="none" stroke="green" stroke-width="2" />`;
+             svg += `<circle cx="${x}" cy="${y}" r="4" fill="none" stroke="#10b981" stroke-width="2" />`;
         });
-        if(pPts) svg += `<polyline points="${pPts}" fill="none" stroke="green" stroke-width="1.5" stroke-dasharray="4" />`;
+        if(pPts) svg += `<polyline points="${pPts}" fill="none" stroke="#10b981" stroke-width="1.5" stroke-dasharray="4" />`;
         currentY += CER_H;
 
         // 4. Waktu
@@ -477,7 +467,6 @@
                 svg += `<rect x="${x}" y="${currentY+TIME_H/2}" width="${COL_W}" height="${TIME_H/2}" fill="none" stroke="black" stroke-width="1"/>`;
             }
         }
-        // Jam Labels
         const tMid = currentY + TIME_H*0.75 + 4;
         for(const [k,v] of Object.entries(d.waktuLabels)) {
              svg += `<text x="${k*COL_W + COL_W/2}" y="${tMid}" text-anchor="middle" class="label-waktu text-blue-800" font-size="9">${v}</text>`;
@@ -487,7 +476,6 @@
 
         // 5. Kontraksi
         svg += grid(KONTRAKSI_ROWS);
-        // Vertical grid lines extension
         for(let i=0; i<=COLS; i++) {
              let x = i*COL_W;
              svg += `<line x1="${x}" y1="${currentY}" x2="${x}" y2="${currentY+KONTRAKSI_H}" class="grid-line-major" />`;
@@ -507,14 +495,13 @@
         for(let i=0; i<=COLS; i++) svg += `<line x1="${i*COL_W}" y1="${currentY}" x2="${i*COL_W}" y2="${currentY+OBAT_H}" class="grid-line-major" />`;
         currentY += OBAT_H;
 
-        // 7. Vitals (Nadi BP)
+        // 7. Vitals
         for(let i=0; i<=VITALS_STEPS; i++) {
             let y = currentY + i*UNIT_H;
             let val = 180 - i*10;
             let cls = (val===100 || val===180) ? "grid-line-thick" : "grid-line";
             svg += `<line x1="0" y1="${y}" x2="${CHART_AREA_WIDTH}" y2="${y}" class="${cls}" />`;
         }
-        // Vertical grid vital & suhu urine
         let totalBot = VITALS_H + SUHU_H + URINE_H;
         for(let i=0; i<=COLS; i++) {
             let x = i*COL_W;
@@ -525,9 +512,9 @@
              let x = p.i*COL_W;
              let sY = currentY + ((180-p.s)/10)*UNIT_H;
              let dY = currentY + ((180-p.d)/10)*UNIT_H;
-             svg += `<line x1="${x}" y1="${sY}" x2="${x}" y2="${dY}" stroke="blue" stroke-width="2" />`;
-             svg += `<path d="M${x-3},${sY+4} L${x},${sY} L${x+3},${sY+4}" fill="none" stroke="blue" stroke-width="2" />`; // Arrow up
-             svg += `<path d="M${x-3},${dY-4} L${x},${dY} L${x+3},${dY-4}" fill="none" stroke="blue" stroke-width="2" />`; // Arrow down
+             svg += `<line x1="${x}" y1="${sY}" x2="${x}" y2="${dY}" stroke="#2563eb" stroke-width="2" />`;
+             svg += `<path d="M${x-3},${sY+4} L${x},${sY} L${x+3},${sY+4}" fill="none" stroke="#2563eb" stroke-width="2" />`;
+             svg += `<path d="M${x-3},${dY-4} L${x},${dY} L${x+3},${dY-4}" fill="none" stroke="#2563eb" stroke-width="2" />`;
         });
         let nPts = "";
         d.nadi.forEach(p => {
@@ -551,82 +538,73 @@
         document.getElementById("chart-svg-container").innerHTML = svg;
       }
 
-      // --- 3. LOGIKA DOWNLOAD PDF FINAL ---
-      function showToast(msg, ok=false) {
+      function showToast(msg) {
         const t = document.getElementById("toast-message");
-        document.getElementById("toast-text").innerText = msg;
-        t.className = `shadow-xl ${ok?'toast-success':'toast-error'} opacity-100`;
+        t.innerText = msg;
         t.style.opacity = 1;
-        setTimeout(() => t.style.opacity = 0, 4000);
+        setTimeout(() => t.style.opacity = 0, 3000);
       }
 
       async function downloadPDF(btn) {
         if(btn.classList.contains("disabled")) return;
 
-        // 1. Ubah ke Mode Export (Tampilan jadi padat)
+        // 1. Ubah ke Tampilan Export (Padat & Rapi)
         updateDimensions(true);
         renderInfo();
         renderChart();
-        await new Promise(r => setTimeout(r, 600)); // Tunggu render ulang
+        
+        // 2. SCROLL KE ATAS (Penting agar header tercapture)
+        window.scrollTo(0, 0);
+        await new Promise(r => setTimeout(r, 600));
 
         btn.classList.add("hidden");
         document.getElementById("pdf-status").classList.remove("hidden");
 
+        const el = document.getElementById("content-container");
+        const nm = (processedData.pasien.nama || "Pasien").replace(/[^a-zA-Z0-9]/g,"_");
+        
+        const opt = {
+          margin: [5, 5, 5, 5],
+          filename: `Partograf_${nm}.pdf`,
+          image: { type: 'jpeg', quality: 0.98 },
+          html2canvas: { 
+            scale: 2, 
+            useCORS: true,
+            // KUNCI: Paksa window width lebih lebar dari konten agar tidak tercrop
+            windowWidth: 1200, 
+            width: 1200 
+          },
+          jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+        };
+
         try {
-            const el = document.getElementById("content-container");
-            const nm = (processedData.pasien.nama||"Pasien").replace(/[^a-zA-Z0-9]/g,"_");
-            const fname = `Partograf_${nm}.pdf`;
-
-            // KONFIGURASI PDF SUPAYA PAS (FIT)
-            const opt = {
-                margin: [5, 5, 5, 5], // Margin tipis 5mm
-                filename: fname,
-                image: { type: 'jpeg', quality: 0.98 },
-                html2canvas: { 
-                    scale: 2,           // Resolusi tinggi
-                    useCORS: true,
-                    scrollY: 0,
-                    windowWidth: 1100   // PENTING: Paksa canvas menganggap lebar 1100px
-                                        // Ini mengatasi masalah "terpotong di kanan"
-                },
-                jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
-            };
-
-            const pdfDataUri = await html2pdf().set(opt).from(el).output('datauristring');
-            const base64 = pdfDataUri.split(',')[1];
-            
-            // Kirim ke React Native
-            if(window.ReactNativeWebView) {
-                window.ReactNativeWebView.postMessage(JSON.stringify({ action: "EXPORT_PDF", filename: fname, data: base64 }));
-            } else {
-                // Fallback browser biasa
-                html2pdf().set(opt).from(el).save();
-                resetView();
-            }
-
+          const pdfDataUri = await html2pdf().set(opt).from(el).output('datauristring');
+          const base64 = pdfDataUri.split(',')[1];
+          
+          if(window.ReactNativeWebView) {
+             window.ReactNativeWebView.postMessage(JSON.stringify({ action: "EXPORT_PDF", filename: opt.filename, data: base64 }));
+          } else {
+             html2pdf().set(opt).from(el).save();
+             resetView();
+          }
         } catch(e) {
-            showToast("Gagal: " + e.message);
-            resetView();
+          showToast("Gagal: " + e.message);
+          resetView();
         }
       }
 
       function resetView() {
         document.getElementById("pdf-status").classList.add("hidden");
         document.getElementById("btn-download").classList.remove("hidden");
-        updateDimensions(false); // Balik ke tampilan normal
+        updateDimensions(false); // Kembali ke tampilan Web yang lega
         renderInfo();
         renderChart();
       }
 
       window.addEventListener("message", (e) => {
-         try {
-             const d = JSON.parse(e.data);
-             if(d.action === "PDF_SHARED") { showToast("PDF Berhasil Disimpan", true); resetView(); }
-             if(d.action === "PDF_ERROR") { showToast("Gagal Simpan PDF", false); resetView(); }
-         } catch(err){}
+         try { const d=JSON.parse(e.data); if(d.action==="PDF_SHARED" || d.action==="PDF_ERROR") resetView(); } catch(err){}
       });
 
-      // Start
       fetchData();
     </script>
   </body>
