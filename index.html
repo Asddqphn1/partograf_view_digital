@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Partograf Digital API - Tampilan Final</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Tambahkan library html2pdf -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <style>
       body {
@@ -61,13 +62,13 @@
 
       /* Layout */
       .main-container {
-        width: 780px;
+        width: 1100px;
         margin: 0 auto;
         background: white;
         box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
         border: 1px solid #e5e7eb;
       }
-      .chart-row {  
+      .chart-row {
         display: flex;
         width: 100%;
       }
@@ -467,10 +468,10 @@
               class="w-16 pl-2 flex flex-col justify-center gap-2 text-[10px] font-bold border-r border-transparent"
             >
               <div class="flex items-center gap-1">
-                <span class="text-lg leading-none">•</span> Nadi
+                <span class="text-lg leading-none">â€¢</span> Nadi
               </div>
               <div class="flex items-center gap-1">
-                <span class="text-base leading-none">↕</span> Tekanan<br />Darah
+                <span class="text-base leading-none">â†•</span> Tekanan<br />Darah
               </div>
             </div>
             <div
@@ -482,7 +483,7 @@
             id="label-suhu-area"
             class="relative w-full border-b border-black flex items-center justify-end pr-2 text-[10px] font-bold"
           >
-            Suhu °C
+            Suhu Â°C
           </div>
           <div
             id="label-urine-area"
@@ -1411,63 +1412,91 @@
         }
       });
 
-      // --- 3. EXPORT TO PDF FUNCTIONALITY (OPTIMIZED & DEBUGGED) ---
-      async function downloadPDF(btn) {
-        if(btn.classList.contains("disabled")) return;
+      // --- 3. EXPORT TO PDF FUNCTIONALITY ---
+      // --- 3. EXPORT TO PDF FUNCTIONALITY (AUTO-FIT A4) ---
+      async function downloadPDF(button) {
+        if (button.classList.contains("disabled")) return;
 
-        updateDimensions(true); // MODE EXPORT
-        renderInfo();
-        renderChart();
-        
-        window.scrollTo(0, 0);
-        await new Promise(r => setTimeout(r, 600));
-
-        btn.classList.add("hidden");
+        // 1. UI Loading
+        button.classList.add("hidden");
         document.getElementById("pdf-status").classList.remove("hidden");
+        document.getElementById("status-text").innerText = "Memproses PDF...";
 
-        const el = document.getElementById("content-container");
-        const nm = (processedData.pasien.nama || "Pasien").replace(/[^a-zA-Z0-9]/g,"_");
-        
-        const opt = {
-          margin: [5, 5, 5, 5],
-          filename: `Partograf_${nm}.pdf`,
-          image: { type: 'jpeg', quality: 0.98 },
-          html2canvas: { 
-            scale: 2, 
-            useCORS: true,
-            windowWidth: 1200, // KUNCI AGAR TIDAK KEPOTONG KANAN
-            width: 1200 
-          },
-          jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
-        };
+        // Ambil elemen
+        const element = document.getElementById("content-container");
+
+        // 2. SIMPAN STYLE ASLI (Supaya tampilan HP tidak rusak permanen)
+        const originalWidth = element.style.width;
+        const originalTransform = element.style.transform;
+        const originalOrigin = element.style.transformOrigin;
 
         try {
-          const pdfDataUri = await html2pdf().set(opt).from(el).output('datauristring');
-          const base64 = pdfDataUri.split(',')[1];
-          
-          if(window.ReactNativeWebView) {
-             window.ReactNativeWebView.postMessage(JSON.stringify({ action: "EXPORT_PDF", filename: opt.filename, data: base64 }));
-          } else {
-             html2pdf().set(opt).from(el).save();
-             resetView();
-          }
-        } catch(e) {
-          showToast("Gagal: " + e.message);
-          resetView();
+          // --- STEP 1: FIX NAMA FILE ---
+          const rawNama = processedData.pasien.nama || "TanpaNama";
+          const cleanNama = rawNama
+            .replace(/[^a-zA-Z0-9 ]/g, "")
+            .replace(/\s+/g, "_");
+          const filename = `Partograf_Bunda_${cleanNama}.pdf`;
+
+          // --- STEP 2: PAKSA PERKECIL (SHRINK) AGAR MUAT A4 ---
+          // Logika: Lebar konten 1100px. Lebar A4 ~790px.
+          // Kita kecilkan jadi 70% (scale 0.7) supaya muat masuk kertas.
+          element.style.width = "1100px"; // Kunci lebar internal agar grafik tidak hancur
+          element.style.transform = "scale(0.7)"; // Zoom out jadi 70%
+          element.style.transformOrigin = "top left"; // Mulai dari pojok kiri atas
+
+          // Config PDF
+          const opt = {
+            margin: [10, 5, 10, 5], // Margin aman (Atas, Kiri, Bawah, Kanan)
+            filename: filename,
+            image: { type: "jpeg", quality: 0.98 },
+            html2canvas: {
+              scale: 2, // Tetap resolusi tinggi (HD)
+              useCORS: true,
+              scrollY: 0,
+              // PENTING: windowWidth harus match lebar asli sebelum diskala
+              windowWidth: 1150,
+            },
+            jsPDF: {
+              unit: "mm",
+              format: "a4",
+              orientation: "portrait",
+            },
+            pagebreak: { mode: "avoid-all" },
+          };
+
+          document.getElementById("status-text").innerText =
+            "Mengekspor ke A4...";
+
+          // 3. GENERATE
+          const pdfDataUri = await html2pdf()
+            .set(opt)
+            .from(element)
+            .output("datauristring");
+
+          // 4. KEMBALIKAN TAMPILAN (RESTORE) SECEPATNYA
+          // Kita kembalikan style sebelum kirim data ke native agar UI HP langsung normal
+          element.style.width = originalWidth;
+          element.style.transform = originalTransform;
+          element.style.transformOrigin = originalOrigin;
+
+          // 5. KIRIM DATA
+          const base64Data = pdfDataUri.split(",")[1];
+          document.getElementById("status-text").innerText = "Mengirim data...";
+          sendPdfToNative(base64Data, filename);
+        } catch (err) {
+          console.error("PDF Export Error:", err);
+          showToast(`Gagal: ${err.message}`, false);
+
+          // Jaga-jaga: Kembalikan style jika error
+          element.style.width = originalWidth;
+          element.style.transform = originalTransform;
+          element.style.transformOrigin = originalOrigin;
+
+          document.getElementById("pdf-status").classList.add("hidden");
+          button.classList.remove("hidden");
         }
       }
-
-      function resetView() {
-        document.getElementById("pdf-status").classList.add("hidden");
-        document.getElementById("btn-download").classList.remove("hidden");
-        updateDimensions(false); 
-        renderInfo();
-        renderChart();
-      }
-
-      window.addEventListener("message", (e) => {
-         try { const d=JSON.parse(e.data); if(d.action==="PDF_SHARED" || d.action==="PDF_ERROR") resetView(); } catch(err){}
-      });
 
       fetchData();
     </script>
