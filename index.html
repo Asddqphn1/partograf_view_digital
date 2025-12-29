@@ -484,7 +484,7 @@
             id="label-suhu-area"
             class="relative w-full border-b border-black flex items-center justify-end pr-2 text-[10px] font-bold"
           >
-            Suhu Â°C
+            Suhu°C
           </div>
           <div
             id="label-urine-area"
@@ -1413,7 +1413,7 @@
         }
       });
 
-      // --- 3. EXPORT TO PDF FUNCTIONALITY (METODE FOTO & PAKSA FIT F4) ---
+      // --- 3. EXPORT TO PDF FUNCTIONALITY (FIX KANAN TERPOTONG) ---
       async function downloadPDF(button) {
         if (button.classList.contains("disabled")) return;
 
@@ -1433,50 +1433,56 @@
             .replace(/\s+/g, "_");
           const filename = `Partograf_Bunda_${cleanNama}.pdf`;
 
-          // --- STEP 2: KUNCI LEBAR KONTEN ---
-          // Kita kunci lebar div ke 1100px agar layout grafik tetap rapi saat difoto
+          document.getElementById("status-text").innerText =
+            "Mengambil Gambar Penuh...";
+
+          // --- STEP 2: PAKSA DIMENSI UNTUK FOTO ---
+          // Kita kunci lebar div ke 1100px agar layout grafik tetap rapi
           element.style.width = "1100px";
 
-          document.getElementById("status-text").innerText =
-            "Mengambil Gambar...";
+          // Hitung tinggi otomatis berdasarkan konten setelah lebar dikunci
+          // Kita tambah sedikit buffer height biar border bawah aman
+          const contentHeight = element.scrollHeight;
 
-          // --- STEP 3: AMBIL GAMBAR (CANVAS) ---
-          // Kita gunakan html2pdf HANYA untuk mengambil gambar (canvas), bukan generate PDF langsung.
-          // Ini menghindari logika pemotongan halaman otomatis library yang bikin error.
+          // --- STEP 3: AMBIL GAMBAR (CANVAS) DENGAN UKURAN PAKSA ---
           const canvas = await html2pdf()
             .from(element)
             .set({
               html2canvas: {
-                scale: 2, // Resolusi tinggi (Retina) supaya teks tidak pecah
+                scale: 2, // Resolusi tinggi
                 useCORS: true,
                 scrollY: 0,
-                windowWidth: 1100, // Pastikan canvas menangkap lebar penuh
+                scrollX: 0,
+                // INI KUNCINYA: Paksa canvas merender lebar 1100px full
+                width: 1100,
+                height: contentHeight,
+                windowWidth: 1100,
+                windowHeight: contentHeight,
               },
             })
             .toCanvas()
             .get("canvas");
 
           // --- STEP 4: INISIALISASI PDF F4 MANUAL ---
-          // Kita cek akses ke jsPDF global (biasanya dibawa oleh bundle html2pdf)
           const jsPDF = window.jspdf ? window.jspdf.jsPDF : window.jsPDF;
           if (!jsPDF) {
             throw new Error(
-              "Library jsPDF tidak terdeteksi. Pastikan html2pdf.bundle.js dimuat dengan benar."
+              "Library jsPDF tidak terdeteksi. Pastikan html2pdf.bundle.js dimuat."
             );
           }
 
-          // Buat PDF ukuran F4 (215mm x 330mm)
+          // PDF F4 Portrait (215 x 330 mm)
           const pdf = new jsPDF({
             orientation: "portrait",
             unit: "mm",
             format: [215, 330],
           });
 
-          // --- STEP 5: HITUNG UKURAN AGAR PAS 1 HALAMAN (FIT TO PAGE) ---
+          // --- STEP 5: HITUNG SKALA AGAR PAS KERTAS (FIT TO PAGE) ---
           const imgData = canvas.toDataURL("image/jpeg", 0.95);
-          const pdfWidth = 215; // Lebar F4
-          const pdfHeight = 330; // Tinggi F4
-          const margin = 5; // Margin 5mm biar aman print
+          const pdfWidth = 215;
+          const pdfHeight = 330;
+          const margin = 5; // Margin 5mm
 
           const printWidth = pdfWidth - margin * 2;
           const printHeight = pdfHeight - margin * 2;
@@ -1487,32 +1493,30 @@
 
           let finalW, finalH;
 
-          // Logika "Contain": Sesuaikan gambar agar masuk ke kertas tanpa terpotong
+          // Logika agar gambar SELALU muat dalam satu halaman
           if (imgRatio > pdfRatio) {
-            // Gambar lebih lebar (gemuk), ikut lebar kertas
+            // Jika gambar terlalu lebar, sesuaikan lebar
             finalW = printWidth;
             finalH = finalW / imgRatio;
           } else {
-            // Gambar lebih tinggi (kurus), ikut tinggi kertas
+            // Jika gambar terlalu tinggi, sesuaikan tinggi
             finalH = printHeight;
             finalW = finalH * imgRatio;
           }
 
-          // Posisikan di tengah (Center)
+          // Posisikan di tengah
           const xPos = (pdfWidth - finalW) / 2;
-          const yPos = 5; // Jarak dari atas 5mm
+          const yPos = 5; // Jarak atas 5mm
 
-          // Tempel gambar ke PDF
           pdf.addImage(imgData, "JPEG", xPos, yPos, finalW, finalH);
 
-          // --- STEP 6: OUTPUT DATA ---
+          // --- STEP 6: KIRIM HASIL ---
           const pdfDataUri = pdf.output("datauristring");
           const base64Data = pdfDataUri.split(",")[1];
 
-          // Restore Tampilan Asli
+          // Kembalikan style asli
           element.style.width = originalWidth;
 
-          // Kirim ke Native
           document.getElementById("status-text").innerText = "Mengirim data...";
           sendPdfToNative(base64Data, filename);
         } catch (err) {
