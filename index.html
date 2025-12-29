@@ -1412,14 +1412,16 @@
         }
       });
 
-      // --- 3. EXPORT TO PDF FUNCTIONALITY (AUTO-FIT SATU HALAMAN) ---
+      // --- 3. EXPORT TO PDF FUNCTIONALITY (OPTIMIZED & DEBUGGED) ---
       async function downloadPDF(button) {
         if (button.classList.contains("disabled")) return;
 
         // 1. UI Loading
         button.classList.add("hidden");
-        document.getElementById("pdf-status").classList.remove("hidden");
-        document.getElementById("status-text").innerText = "Memproses PDF...";
+        const statusBadge = document.getElementById("pdf-status");
+        const statusText = document.getElementById("status-text");
+        statusBadge.classList.remove("hidden");
+        statusText.innerText = "Memproses Layout...";
 
         const element = document.getElementById("content-container");
         const mainContainer = element.querySelector(".main-container");
@@ -1438,64 +1440,49 @@
           const filename = `Partograf_Bunda_${cleanNama}.pdf`;
 
           // --- KUNCI: Setting Ukuran Canvas ---
-          // Kita kunci lebar container agar layout grid tidak berantakan
-          // Tapi kita TIDAK melakukan scale() di CSS, biarkan html2canvas memotret apa adanya
           mainContainer.style.width = "1100px";
           mainContainer.style.margin = "0";
           mainContainer.style.transform = "none";
 
-          // Tunggu sebentar agar render ulang layout selesai
-          await new Promise((resolve) => setTimeout(resolve, 100));
+          // Tunggu reflow
+          await new Promise((resolve) => setTimeout(resolve, 200));
 
-          document.getElementById("status-text").innerText =
-            "Mengambil gambar...";
+          statusText.innerText = "Menggenerate Gambar...";
 
-          // Capture High Resolution
+          // Capture (Turunkan sedikit scale dan quality agar tidak crash memori di HP kentang)
           const canvas = await html2canvas(mainContainer, {
-            scale: 1.5, // Skala 1.5 cukup tajam untuk A4 & lebih ringan
+            scale: 1.2, // Turunkan dari 1.5 ke 1.2 agar lebih ringan
             useCORS: true,
             logging: false,
-            windowWidth: 1100, // Pastikan canvas menangkap lebar penuh
+            windowWidth: 1100,
             scrollY: 0,
             backgroundColor: "#ffffff",
           });
 
-          document.getElementById("status-text").innerText =
-            "Menyesuaikan ukuran...";
+          statusText.innerText = "Menyusun PDF...";
 
-          // --- STEP PENTING: HITUNG MATEMATIKA FIT-TO-PAGE ---
-          const imgData = canvas.toDataURL("image/jpeg", 0.9);
+          // --- STEP: FIT-TO-PAGE CALCULATION ---
+          // Gunakan kualitas 0.7 (70%) agar string base64 tidak terlalu panjang buat Bridge
+          const imgData = canvas.toDataURL("image/jpeg", 0.7); 
           const { jsPDF } = window.jspdf;
 
-          // Ukuran A4 Portrait (mm)
           const pdfWidth = 210;
           const pdfHeight = 297;
-          const margin = 5; // Margin tipis 5mm
+          const margin = 5;
 
-          // Area yang bisa dipakai untuk print
           const printWidth = pdfWidth - margin * 2;
           const printHeight = pdfHeight - margin * 2;
-
-          // Dimensi Gambar Hasil Capture
           const imgWidth = canvas.width;
           const imgHeight = canvas.height;
 
-          // Hitung Rasio
           const widthRatio = printWidth / imgWidth;
           const heightRatio = printHeight / imgHeight;
-
-          // PILIH RASIO TERKECIL (Agar muat Lebar DAN Tinggi)
-          // Ini kuncinya: Kalau gambar kepanjangan, dia akan pakai 'heightRatio' untuk mengecilkan gambar
           const finalScale = Math.min(widthRatio, heightRatio);
-
           const finalW = imgWidth * finalScale;
           const finalH = imgHeight * finalScale;
-
-          // Posisi tengah (Centering)
           const xPos = (pdfWidth - finalW) / 2;
-          const yPos = margin; // Mulai dari margin atas
+          const yPos = margin;
 
-          // Generate PDF
           const pdf = new jsPDF({
             orientation: "portrait",
             unit: "mm",
@@ -1504,16 +1491,30 @@
 
           pdf.addImage(imgData, "JPEG", xPos, yPos, finalW, finalH);
 
-          // Kembalikan Style Asli (Penting agar tampilan HP balik normal)
+          // Kembalikan Style Asli
           mainContainer.style.width = originalWidth;
           mainContainer.style.transform = originalTransform;
           mainContainer.style.margin = originalMargin;
 
-          // Convert ke base64 & Kirim
+          statusText.innerText = "Mengirim ke Aplikasi...";
+
           const pdfBase64 = pdf.output("datauristring").split(",")[1];
 
-          document.getElementById("status-text").innerText = "Mengirim data...";
+          // Kirim ke Native
           sendPdfToNative(pdfBase64, filename);
+
+          // --- TIMEOUT PENYELAMAT ---
+          // Jika Native App tidak membalas dalam 8 detik, kita matikan loading secara paksa
+          // Ini mencegah "mutar terus" jika bridge macet.
+          setTimeout(() => {
+             if (!statusBadge.classList.contains("hidden")) {
+                 statusBadge.classList.add("hidden");
+                 button.classList.remove("hidden");
+                 // Asumsi sukses jika tidak ada error balik, atau tampilkan pesan netral
+                 showToast("Permintaan download dikirim. Cek notifikasi/folder.", true);
+             }
+          }, 8000);
+
         } catch (err) {
           console.error("PDF Export Error:", err);
           showToast(`Gagal: ${err.message}`, false);
@@ -1523,7 +1524,7 @@
           mainContainer.style.transform = originalTransform;
           mainContainer.style.margin = originalMargin;
 
-          document.getElementById("pdf-status").classList.add("hidden");
+          statusBadge.classList.add("hidden");
           button.classList.remove("hidden");
         }
       }
