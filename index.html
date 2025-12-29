@@ -514,7 +514,7 @@
       <div
         class="bg-gray-50 p-3 border-t border-gray-200 text-center text-xs text-gray-500 version-footer"
       >
-        Partograf Digital API v1.6 (Data Kelahiran Lengkap)
+        Partograf Digital API v1.7 (Data Kelahiran & Kontraksi Lengkap)
       </div>
     </div>
 
@@ -923,26 +923,35 @@
               val: c.volume_urine,
             });
 
-          // --- UPDATE LOGIC KONTRAKSI (HYBRID) ---
+          // === UPDATE LOGIC KONTRAKSI (FIX MASALAH STOPWATCH) ===
           let frekuensiFinal = 0;
           let durasiFinal = 0;
 
-          // Cek 1: Apakah ada input manual? (Prioritas Utama)
-          if (c.kontraksi_frekuensi !== null && c.kontraksi_frekuensi !== undefined) {
-             frekuensiFinal = parseInt(c.kontraksi_frekuensi);
-             durasiFinal = c.kontraksi_durasi ? parseInt(c.kontraksi_durasi) : 0;
-          } 
-          // Cek 2: Kalau manual kosong, hitung dari array kontraksi (Stopwatch/Legacy)
-          else if (c.kontraksi && c.kontraksi.length > 0) {
+          // PRIORITAS 1: Cek Data Stopwatch (Array Detail)
+          // Kita prioritaskan ini agar arsirannya akurat kalau user pakai stopwatch
+          if (Array.isArray(c.kontraksi) && c.kontraksi.length > 0) {
              frekuensiFinal = c.kontraksi.length;
              let maxDur = 0;
              c.kontraksi.forEach((k) => {
-               const start = new Date(k.waktu_mulai);
-               const end = new Date(k.waktu_selesai);
-               const dur = (end - start) / 1000;
-               if (dur > maxDur) maxDur = dur;
+               // FIX PENTING: Ganti Spasi dengan T agar terbaca di semua browser/webview
+               // Ini yang kemarin bikin durasinya 0 terus
+               const sStr = k.waktu_mulai ? k.waktu_mulai.replace(" ", "T") : "";
+               const eStr = k.waktu_selesai ? k.waktu_selesai.replace(" ", "T") : "";
+               
+               if(sStr && eStr) {
+                   const start = new Date(sStr);
+                   const end = new Date(eStr);
+                   const dur = (end - start) / 1000;
+                   // Validasi agar tidak NaN
+                   if (!isNaN(dur) && dur > maxDur) maxDur = dur;
+               }
              });
              durasiFinal = maxDur;
+          }
+          // PRIORITAS 2: Input Manual (Backup)
+          else if (c.kontraksi_frekuensi !== null && c.kontraksi_frekuensi !== undefined) {
+             frekuensiFinal = parseInt(c.kontraksi_frekuensi);
+             durasiFinal = c.kontraksi_durasi ? parseInt(c.kontraksi_durasi) : 0;
           }
 
           // Push ke data grafik jika ada data valid
