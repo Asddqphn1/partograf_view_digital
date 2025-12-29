@@ -1412,7 +1412,7 @@
         }
       });
 
-      // --- 3. EXPORT TO PDF FUNCTIONALITY (FAST VERSION) ---
+      // --- 3. EXPORT TO PDF FUNCTIONALITY (FIXED & OPTIMIZED) ---
       async function downloadPDF(button) {
         if (button.classList.contains("disabled")) return;
 
@@ -1421,89 +1421,79 @@
         document.getElementById("pdf-status").classList.remove("hidden");
         document.getElementById("status-text").innerText = "Memproses PDF...";
 
+        // Ambil elemen utama
         const element = document.getElementById("content-container");
-        const mainContainer = element.querySelector('.main-container');
 
-        // Simpan style asli
-        const originalWidth = mainContainer.style.width;
-        const originalMaxWidth = mainContainer.style.maxWidth;
-        const originalMargin = mainContainer.style.margin;
+        // Simpan style asli (agar tampilan di layar tidak rusak permanen)
+        const originalWidth = element.style.width;
+        const originalTransform = element.style.transform;
+        const originalOrigin = element.style.transformOrigin;
 
         try {
-          // Nama file
+          // --- STEP 1: NAMA FILE ---
           const rawNama = processedData.pasien.nama || "TanpaNama";
           const cleanNama = rawNama
             .replace(/[^a-zA-Z0-9 ]/g, "")
             .replace(/\s+/g, "_");
           const filename = `Partograf_Bunda_${cleanNama}.pdf`;
 
-          // Ubah ukuran ke A4
-          mainContainer.style.width = "750px";
-          mainContainer.style.maxWidth = "750px";
-          mainContainer.style.margin = "0";
+          // --- STEP 2: TEKNIK SCALING (Agar Cepat & Muat A4) ---
+          // Logika: Kontainer 1100px terlalu lebar untuk A4 Portrait (~794px).
+          // Kita kecilkan konten jadi 70% (scale 0.7) hanya saat difoto.
+          // Ini jauh lebih cepat daripada me-resize CSS secara manual.
 
-          // Tunggu render
-          await new Promise(resolve => setTimeout(resolve, 50));
+          element.style.width = "1100px"; // Kunci lebar agar grafik tidak hancur
+          element.style.transform = "scale(0.7)"; // Zoom out jadi 70%
+          element.style.transformOrigin = "top left"; // Titik kordinat pojok kiri atas
 
-          document.getElementById("status-text").innerText = "Mengambil gambar...";
+          // --- STEP 3: KONFIGURASI RINGAN ---
+          const opt = {
+            margin: [10, 5, 10, 5],
+            filename: filename,
+            image: { type: "jpeg", quality: 0.95 }, // JPEG JAUH LEBIH CEPAT dari PNG
+            html2canvas: {
+              scale: 2, // Resolusi (2 = HD, kalau masih berat turunkan ke 1.5)
+              useCORS: true,
+              scrollY: 0,
+              windowWidth: 1150, // Pura-pura layar lebar biar tidak terpotong ke samping
+            },
+            jsPDF: {
+              unit: "mm",
+              format: "a4",
+              orientation: "portrait",
+            },
+            pagebreak: { mode: "avoid-all" },
+          };
 
-          // Capture dengan html2canvas (lebih cepat dari html2pdf)
-          const canvas = await html2canvas(element, {
-            scale: 2,
-            useCORS: true,
-            logging: false,
-            windowWidth: 750,
-            scrollY: 0,
-            backgroundColor: '#ffffff'
-          });
+          document.getElementById("status-text").innerText = "Mengekspor...";
 
-          document.getElementById("status-text").innerText = "Membuat PDF...";
+          // --- STEP 4: GENERATE ---
+          // Kita gunakan library html2pdf langsung karena lebih stabil menangani memori
+          const pdfDataUri = await html2pdf()
+            .set(opt)
+            .from(element)
+            .output("datauristring");
 
-          // Kembalikan ukuran SEGERA setelah capture
-          mainContainer.style.width = originalWidth;
-          mainContainer.style.maxWidth = originalMaxWidth;
-          mainContainer.style.margin = originalMargin;
+          // --- STEP 5: KEMBALIKAN TAMPILAN (RESTORE) ---
+          // Penting: Kembalikan tampilan sebelum mengirim data agar UI HP user kembali normal
+          element.style.width = originalWidth;
+          element.style.transform = originalTransform;
+          element.style.transformOrigin = originalOrigin;
 
-          // Buat PDF dengan jsPDF
-          const { jsPDF } = window.jspdf;
-          const imgData = canvas.toDataURL('image/jpeg', 0.95);
-          
-          // A4 size dalam mm
-          const pdfWidth = 210;
-          const pdfHeight = 297;
-          
-          // Hitung proporsi
-          const imgWidth = canvas.width;
-          const imgHeight = canvas.height;
-          const ratio = imgWidth / imgHeight;
-          
-          // Fit ke A4 dengan margin
-          const margin = 8;
-          const contentWidth = pdfWidth - (margin * 2);
-          const contentHeight = contentWidth / ratio;
-          
-          const pdf = new jsPDF({
-            orientation: contentHeight > (pdfHeight - margin * 2) ? 'portrait' : 'portrait',
-            unit: 'mm',
-            format: 'a4'
-          });
-
-          pdf.addImage(imgData, 'JPEG', margin, margin, contentWidth, contentHeight, '', 'FAST');
-
-          // Convert ke base64
-          const pdfBase64 = pdf.output('datauristring').split(',')[1];
+          // --- STEP 6: KIRIM KE NATIVE ---
+          // Ambil base64 murni (hapus prefix data:application/pdf;base64,)
+          const base64Data = pdfDataUri.split(",")[1];
 
           document.getElementById("status-text").innerText = "Mengirim data...";
-          sendPdfToNative(pdfBase64, filename);
-
+          sendPdfToNative(base64Data, filename);
         } catch (err) {
           console.error("PDF Export Error:", err);
           showToast(`Gagal: ${err.message}`, false);
 
-          // Restore style
-          mainContainer.style.width = originalWidth;
-          mainContainer.style.maxWidth = originalMaxWidth;
-          mainContainer.style.margin = originalMargin;
+          // Jaga-jaga: Kembalikan style jika error di tengah jalan
+          element.style.width = originalWidth;
+          element.style.transform = originalTransform;
+          element.style.transformOrigin = originalOrigin;
 
           document.getElementById("pdf-status").classList.add("hidden");
           button.classList.remove("hidden");
