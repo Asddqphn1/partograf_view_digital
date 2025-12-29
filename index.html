@@ -3,163 +3,346 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Partograf Digital - Cetak A4 Full</title>
+    <title>Partograf Digital API - Tampilan Final</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Tambahkan library html2pdf -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <style>
-      body { font-family: "Arial", sans-serif; }
-      * { box-sizing: border-box; }
+      body {
+        font-family: "Arial", sans-serif;
+      }
+      * {
+        box-sizing: border-box;
+      }
 
-      /* --- STYLE DASAR (WEB VIEW) --- */
-      .grid-line { stroke: #000; stroke-width: 1; shape-rendering: crispEdges; }
-      .grid-line-thick { stroke: #000; stroke-width: 2; shape-rendering: crispEdges; }
-      .grid-line-major { stroke: #000; stroke-width: 1.2; shape-rendering: crispEdges; }
-      .grid-line-minor { stroke: #9ca3af; stroke-width: 0.8; shape-rendering: crispEdges; }
+      /* Grid Styling */
+      .grid-line {
+        stroke: #000;
+        stroke-width: 1;
+        shape-rendering: crispEdges;
+      }
+      .grid-line-thick {
+        stroke: #000;
+        stroke-width: 2;
+        shape-rendering: crispEdges;
+      }
+      .grid-line-major {
+        stroke: #000;
+        stroke-width: 1.2;
+        shape-rendering: crispEdges;
+      }
+      .grid-line-minor {
+        stroke: #9ca3af;
+        stroke-width: 0.8;
+        shape-rendering: crispEdges;
+      }
 
-      .label-axis { font-size: 10px; font-weight: bold; }
-      .label-waktu { font-size: 11px; font-weight: bold; }
-      .data-text { font-size: 13px; font-weight: bold; font-family: sans-serif; }
-      
+      /* Typography */
+      .label-axis {
+        font-size: 10px;
+        font-weight: bold;
+      }
+      .label-waktu {
+        font-size: 11px;
+        font-weight: bold;
+      }
+      .data-text {
+        font-size: 13px;
+        font-weight: bold;
+        font-family: sans-serif;
+      }
+
       /* Font tulisan tangan untuk data input & hasil lahir */
-      .handwritten { font-family: "Verdana", "Segoe UI", sans-serif; fill: #0000ff; font-weight: 700; color: #0000ff; }
+      .handwritten {
+        font-family: "Verdana", "Segoe UI", sans-serif;
+        fill: #0000ff;
+        font-weight: 700;
+        color: #0000ff;
+      }
 
-      /* Container Utama (Tetap 1100px agar logika plot tidak berubah) */
+      /* Layout */
       .main-container {
-        width: 1100px; 
+        width: 1100px;
         margin: 0 auto;
         background: white;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
         border: 1px solid #e5e7eb;
+      }
+      .chart-row {
+        display: flex;
+        width: 100%;
+      }
+      .y-axis-col {
+        flex: none;
+        width: 140px;
+        border-right: 1px solid #000;
+        background: white;
+        z-index: 10;
         position: relative;
       }
-      
-      .chart-row { display: flex; width: 100%; }
-      .y-axis-col { flex: none; width: 140px; border-right: 1px solid #000; background: white; z-index: 10; position: relative; }
-      .chart-area-col { flex: 1; position: relative; }
-      
-      /* Header Styles */
-      .header-label { font-weight: bold; color: #1f2937; white-space: nowrap; font-size: 13px; }
-      .header-input { border-bottom: 1px solid black; padding: 0 4px; white-space: nowrap; font-size: 14px; min-height: 20px; display: flex; align-items: end; }
+      .chart-area-col {
+        flex: 1;
+        position: relative;
+      }
+      .header-label {
+        font-weight: bold;
+        color: #1f2937;
+        white-space: nowrap;
+        font-size: 13px;
+      }
+      .header-input {
+        border-bottom: 1px solid black;
+        padding: 0 0.5rem;
+        white-space: nowrap;
+        font-size: 14px;
+      }
 
       /* Legend & Patterns */
-      .legend-box { width: 12px; height: 12px; border: 1px solid black; display: inline-block; vertical-align: middle; margin-right: 4px; }
-
-      /* --- STYLE KHUSUS MODE EXPORT (PDF) --- */
-      body.exporting {
-        width: 1150px !important; /* Force width agar kanan tidak terpotong */
-        overflow: visible !important;
-      }
-      
-      body.exporting .main-container {
-        border: none !important;
-        margin: 0 !important;
-        padding: 0 !important;
-        box-shadow: none !important;
+      .legend-box {
+        width: 12px;
+        height: 12px;
+        border: 1px solid black;
+        display: inline-block;
+        vertical-align: middle;
+        margin-right: 4px;
       }
 
-      /* Header di PDF - Sedikit lebih lega dari sebelumnya */
-      body.exporting .header-container {
-        padding: 20px 25px !important; 
-        border-bottom: 2px solid black !important;
+      /* Loader */
+      #loading-screen {
+        position: fixed;
+        inset: 0;
+        background: rgba(255, 255, 255, 0.9);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        z-index: 50;
       }
-      body.exporting .header-row { margin-bottom: 10px; }
-      body.exporting .header-label { font-size: 12px; }
-      body.exporting .header-input { font-size: 13px; height: 20px; border-bottom: 1px dotted #000; }
-      body.exporting #title-header { font-size: 24px; margin-bottom: 15px; text-decoration: underline; }
 
-      /* Font grafik di PDF */
-      body.exporting .label-axis, 
-      body.exporting .label-waktu { font-size: 10px; } 
+      /* Tombol Download Floating */
+      .fab-download {
+        position: fixed;
+        bottom: 30px;
+        right: 30px;
+        background-color: #10b981; /* Green 500 */
+        color: white;
+        padding: 12px 24px;
+        border-radius: 50px;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+        font-weight: bold;
+        cursor: pointer;
+        transition: transform 0.2s, background-color 0.2s;
+        z-index: 100;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      .fab-download:hover {
+        background-color: #059669; /* Green 600 */
+        transform: scale(1.05);
+      }
+      .fab-download svg {
+        width: 20px;
+        height: 20px;
+      }
 
-      /* UI Elements */
-      #loading-screen { position: fixed; inset: 0; background: rgba(255,255,255,0.95); display: flex; justify-content: center; align-items: center; z-index: 50; }
-      .fab-download { position: fixed; bottom: 30px; right: 30px; background-color: #10b981; color: white; padding: 12px 24px; border-radius: 50px; box-shadow: 0 4px 15px rgba(0,0,0,0.3); font-weight: bold; cursor: pointer; z-index: 100; display: flex; gap: 8px; align-items: center; transition: all 0.2s; }
-      .fab-download:hover { transform: scale(1.05); background-color: #059669; }
-      .fab-download.disabled { background-color: #9ca3af; transform: none; cursor: wait; }
-      #toast-message { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: #333; color: white; padding: 10px 20px; border-radius: 8px; opacity: 0; transition: opacity 0.3s; z-index: 200; font-size: 14px; pointer-events: none;}
-      .toast-success { background-color: #d1fae5; color: #065f46; border: 1px solid #34d399; }
-      .toast-error { background-color: #fee2e2; color: #991b1b; border: 1px solid #f87171; }
+      /* Tombol yang dinonaktifkan */
+      .fab-download.disabled {
+        background-color: #9ca3af; /* Gray 400 */
+        cursor: not-allowed;
+        transform: none;
+      }
+
+      /* Toast Message */
+      #toast-message {
+        position: fixed;
+        bottom: 10px;
+        left: 50%;
+        transform: translateX(-50%);
+        z-index: 200;
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.3s;
+        max-width: 90%;
+        min-width: 300px;
+        text-align: center;
+        padding: 12px;
+        border-radius: 8px;
+      }
+      .toast-success {
+        background-color: #d1fae5;
+        border: 1px solid #34d399;
+        color: #065f46;
+      }
+      .toast-error {
+        background-color: #fee2e2;
+        border: 1px solid #f87171;
+        color: #991b1b;
+      }
     </style>
   </head>
-  <body class="bg-gray-100 min-h-screen p-4 overflow-x-auto">
-    
+  <body class="bg-gray-50 min-h-screen p-4 overflow-x-auto">
     <div id="loading-screen">
       <div class="text-center">
-        <div class="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-3"></div>
-        <h2 class="text-lg font-bold text-gray-700">Memuat Data...</h2>
+        <div
+          class="w-16 h-16 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"
+        ></div>
+        <h2 class="text-xl font-bold text-gray-800">
+          Memuat Data Partograf...
+        </h2>
+        <p class="text-gray-500 text-sm mt-2">Menghubungkan ke API...</p>
       </div>
     </div>
 
-    <div id="error-screen" class="hidden fixed inset-0 bg-white z-50 flex justify-center items-center">
-      <div class="text-center max-w-md p-6 bg-red-50 border border-red-200 rounded-lg">
+    <div
+      id="error-screen"
+      class="hidden fixed inset-0 bg-white z-50 flex justify-center items-center"
+    >
+      <div
+        class="text-center max-w-md p-6 bg-red-50 border border-red-200 rounded-lg"
+      >
         <h2 class="text-xl font-bold text-red-700 mb-2">Gagal Memuat Data</h2>
         <p id="error-msg" class="text-red-600 text-sm"></p>
       </div>
     </div>
-    
-    <div id="toast-message"></div>
 
-    <button onclick="downloadPDF(this)" id="btn-download" class="fab-download hidden">
-      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
-      Simpan PDF (A4 Full)
+    <!-- PDF Toast/Message Area -->
+    <div id="toast-message" class="shadow-xl">
+      <p id="toast-text" class="text-sm"></p>
+    </div>
+
+    <!-- Tombol Download -->
+    <button
+      onclick="downloadPDF(this)"
+      id="btn-download"
+      class="fab-download hidden"
+    >
+      <svg
+        fill="none"
+        stroke="currentColor"
+        viewBox="0 0 24 24"
+        xmlns="http://www.w3.org/2000/svg"
+      >
+        <path
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          stroke-width="2"
+          d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
+        ></path>
+      </svg>
+      Export PDF (A4)
     </button>
-    <div id="pdf-status" class="fab-download hidden disabled" style="right: 30px; bottom: 30px; background-color: #3b82f6;">
-      <div class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-      <span>Memproses PDF...</span>
+    <div
+      id="pdf-status"
+      class="fab-download hidden disabled"
+      style="background-color: #3b82f6; right: 30px; bottom: 30px"
+    >
+      <div
+        class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"
+      ></div>
+      <span id="status-text">Memproses PDF...</span>
     </div>
 
     <div class="main-container hidden" id="content-container">
-      
-      <div class="p-6 bg-white w-full border-b-2 border-black header-container">
-        <h1 class="text-2xl font-black text-center mb-6 tracking-widest uppercase" id="title-header">Partograf Persalinan</h1>
-        
-        <div class="flex flex-col gap-3 w-full text-sm">
-          <div class="flex items-end w-full header-row">
-            <div class="flex items-center mr-6">
-              <span class="header-label w-24">No. Registrasi:</span>
+      <div class="p-6 bg-white w-full border-b-2 border-black">
+        <div class="flex justify-center mb-6 relative">
+          <h1 class="text-2xl font-extrabold uppercase tracking-[0.2em]">
+            PARTOGRAF
+          </h1>
+        </div>
+        <div class="flex flex-col gap-4 text-sm w-full">
+          <div class="flex items-end w-full">
+            <div class="flex items-center flex-none mr-8">
+              <span class="header-label w-28">No. Registrasi</span>
               <div class="flex border border-black" id="reg-box"></div>
             </div>
-            <div class="flex flex-1 gap-4">
+            <div class="flex flex-1 items-end gap-4">
               <div class="flex items-end flex-1">
                 <span class="header-label mr-2">Nama Ibu:</span>
-                <div class="flex-1 header-input handwritten pl-2" id="nama-val">-</div>
+                <div class="flex-1 header-input handwritten" id="nama-val">
+                  -
+                </div>
               </div>
-              <div class="flex items-end w-24">
+              <div class="flex items-end w-32 flex-none">
                 <span class="header-label mr-2">Umur:</span>
-                <div class="flex-1 header-input handwritten text-center" id="umur-val">-</div>
+                <div
+                  class="flex-1 header-input handwritten text-center"
+                  id="umur-val"
+                >
+                  -
+                </div>
               </div>
-              <div class="flex items-end gap-3">
-                 <div class="flex items-end"><span class="header-label mr-1">G:</span><div class="header-input w-8 justify-center handwritten" id="g-val">-</div></div>
-                 <div class="flex items-end"><span class="header-label mr-1">P:</span><div class="header-input w-8 justify-center handwritten" id="p-val">-</div></div>
-                 <div class="flex items-end"><span class="header-label mr-1">A:</span><div class="header-input w-8 justify-center handwritten" id="a-val">-</div></div>
+              <div class="flex items-end gap-2 flex-none">
+                <div class="flex items-end">
+                  <span class="header-label mr-1">G:</span>
+                  <div
+                    class="border-b border-black w-8 handwritten text-center"
+                    id="g-val"
+                  >
+                    -
+                  </div>
+                </div>
+                <div class="flex items-end">
+                  <span class="header-label mr-1">P:</span>
+                  <div
+                    class="border-b border-black w-8 handwritten text-center"
+                    id="p-val"
+                  >
+                    -
+                  </div>
+                </div>
+                <div class="flex items-end">
+                  <span class="header-label mr-1">A:</span>
+                  <div
+                    class="border-b border-black w-8 handwritten text-center"
+                    id="a-val"
+                  >
+                    -
+                  </div>
+                </div>
               </div>
             </div>
           </div>
-
-          <div class="flex items-end w-full header-row">
-            <div class="flex items-end mr-6 w-[320px]">
-              <span class="header-label w-24 flex-none">Puskesmas:</span>
-              <div class="flex-1 header-input handwritten" id="puskesmas-val"></div>
+          <div class="flex items-end w-full">
+            <div class="flex items-end flex-none mr-8 w-[350px]">
+              <span class="header-label w-28">No. Puskesmas</span>
+              <div
+                class="flex-1 header-input handwritten"
+                id="puskesmas-val"
+              ></div>
             </div>
-            <div class="flex flex-1 gap-4">
+            <div class="flex flex-1 items-end gap-4">
               <div class="flex items-end flex-1">
-                <span class="header-label mr-2">Tanggal Masuk:</span>
-                <div class="flex-1 header-input handwritten pl-2" id="tanggal-val">-</div>
+                <span class="header-label mr-2">Tanggal:</span>
+                <div class="flex-1 header-input handwritten" id="tanggal-val">
+                  -
+                </div>
               </div>
-              <div class="flex items-end w-40">
-                <span class="header-label mr-2">Jam:</span>
-                <div class="flex-1 header-input handwritten text-center" id="jam-val">-</div>
+              <div class="flex items-end w-40 flex-none">
+                <span class="header-label mr-2">Jam pemeriksaan:</span>
+                <div
+                  class="flex-1 header-input handwritten text-center"
+                  id="jam-val"
+                >
+                  -
+                </div>
               </div>
+              <div class="w-[100px]"></div>
             </div>
           </div>
-
-          <div class="flex items-end w-full header-row">
-            <div class="flex items-end mr-6 w-[450px]">
-              <span class="header-label w-28 flex-none">Ketuban Pecah:</span>
-              <div class="flex-1 header-input handwritten pl-2" id="ketuban-val">-</div>
+          <div class="flex items-end w-full">
+            <div class="flex items-end flex-none mr-8 w-[450px]">
+              <span class="header-label w-28">Ketuban Pecah</span
+              ><span class="header-label mr-2">Sejak Jam:</span>
+              <div class="flex-1 header-input handwritten" id="ketuban-val">
+                -
+              </div>
             </div>
             <div class="flex items-end flex-1">
-              <span class="header-label mr-2">Mules Sejak:</span>
-              <div class="flex-1 header-input handwritten pl-2" id="mules-val">-</div>
+              <span class="header-label mr-2">Mules Sejak Jam:</span>
+              <div class="flex-1 header-input handwritten" id="mules-val">
+                -
+              </div>
+              <div class="w-[100px]"></div>
             </div>
           </div>
         </div>
@@ -167,489 +350,1097 @@
 
       <div class="chart-row bg-white">
         <div class="y-axis-col">
-          <div id="label-djj-area" class="relative border-b border-black w-full">
-            <div class="absolute left-2 top-1/2 -translate-y-1/2 font-bold text-[10px] leading-tight">Denyut<br />Jantung<br />Janin<br />(/mnt)</div>
-            <div id="y-axis-djj" class="absolute right-0 top-0 w-8 h-full pointer-events-none"></div>
-          </div>
-          <div id="label-middle-area" class="relative border-b border-black w-full flex flex-col font-bold text-[10px]">
-            <div class="flex-1 flex items-center justify-end pr-2 border-b border-gray-300">Air Ketuban</div>
-            <div class="flex-1 flex items-center justify-end pr-2">Penyusupan</div>
-          </div>
-          <div id="label-cervix-area" class="relative w-full border-b border-black">
-            <div class="absolute -left-10 top-1/2 -translate-y-1/2 -rotate-90 font-bold text-[10px] text-center w-64 leading-tight">
-              Pembukaan (X) <span class="text-gray-400">|</span> Penurunan (O)
+          <div
+            id="label-djj-area"
+            class="relative border-b border-black w-full"
+          >
+            <div
+              class="absolute left-2 top-1/2 -translate-y-1/2 font-bold text-[10px] leading-tight"
+            >
+              Denyut<br />Jantung<br />Janin<br />( /Menit)
             </div>
-            <div class="absolute right-8 top-2 bottom-2 border-l-2 border-t-2 border-b-2 border-black w-2"></div>
-            <div id="y-axis-cervix" class="absolute right-0 top-0 w-8 h-full pointer-events-none"></div>
+            <div
+              id="y-axis-djj"
+              class="absolute right-0 top-0 w-8 h-full pointer-events-none"
+            ></div>
           </div>
-          <div id="label-time-area" class="w-full flex flex-col justify-end items-end pr-2 pb-2 text-[10px] font-bold border-b border-black">
+          <div
+            id="label-middle-area"
+            class="relative border-b border-black w-full flex flex-col font-bold text-[10px]"
+          >
+            <div
+              class="flex-1 flex items-center justify-end pr-2 border-b border-gray-300"
+            >
+              Air Ketuban
+            </div>
+            <div class="flex-1 flex items-center justify-end pr-2">
+              Penyusupan
+            </div>
+          </div>
+          <div
+            id="label-cervix-area"
+            class="relative w-full border-b border-black"
+          >
+            <div
+              class="absolute -left-8 top-1/2 -translate-y-1/2 -rotate-90 font-bold text-[10px] text-center leading-tight w-64"
+            >
+              Pembukaan Serviks (cm) beri tanda
+              <span class="text-purple-700 text-lg">X</span><br />
+              Turunnya Kepala beri tanda
+              <span class="text-green-600 text-lg">O</span>
+            </div>
+            <div
+              class="absolute -left-12 top-1/2 -translate-y-1/2 -rotate-90 text-[10px] font-bold text-center w-32"
+            >
+              Sentimeter (cm)
+            </div>
+            <div
+              class="absolute right-8 top-2 bottom-2 border-l-2 border-t-2 border-b-2 border-black w-2"
+            ></div>
+            <div
+              id="y-axis-cervix"
+              class="absolute right-0 top-0 w-8 h-full pointer-events-none"
+            ></div>
+          </div>
+          <div
+            id="label-time-area"
+            class="w-full flex flex-col justify-end items-end pr-2 pb-2 text-[10px] font-bold border-b border-black"
+          >
             <div class="h-[30px] flex items-center">Waktu (Jam)</div>
           </div>
-          <div id="label-kontraksi-area" class="relative w-full border-b border-black flex">
-            <div class="w-20 pl-1 flex flex-col justify-center gap-1 text-[9px] font-bold">
-              <div class="mb-1 leading-none">Kontraksi<br />per<br />10 mnt</div>
-              <div class="flex items-center"><div class="legend-box" style="background-image: radial-gradient(black 1px, transparent 1px); background-size: 3px 3px;"></div> < 20</div>
-              <div class="flex items-center"><div class="legend-box" style="background: repeating-linear-gradient(45deg, white, white 2px, black 2px, black 3px);"></div> 20-40</div>
-              <div class="flex items-center"><div class="legend-box bg-black"></div> > 40</div>
+          <div
+            id="label-kontraksi-area"
+            class="relative w-full border-b border-black flex"
+          >
+            <div
+              class="w-20 pl-2 flex flex-col justify-center gap-1 text-[9px] font-bold"
+            >
+              <div class="mb-1">Kontraksi<br />tiap<br />10 menit</div>
+              <div class="flex items-center">
+                <div
+                  class="legend-box"
+                  style="
+                    background-image: radial-gradient(
+                      black 1px,
+                      transparent 1px
+                    );
+                    background-size: 3px 3px;
+                  "
+                ></div>
+                < 20
+              </div>
+              <div class="flex items-center">
+                <div
+                  class="legend-box"
+                  style="
+                    background: repeating-linear-gradient(
+                      45deg,
+                      white,
+                      white 2px,
+                      black 2px,
+                      black 3px
+                    );
+                  "
+                ></div>
+                20-40
+              </div>
+              <div class="flex items-center">
+                <div class="legend-box bg-black"></div>
+                > 40
+              </div>
             </div>
-            <div class="flex-1 flex flex-col justify-between items-end pr-2 py-0 font-bold text-[10px] relative" id="y-axis-kontraksi"></div>
+            <div
+              class="flex-1 flex flex-col justify-between items-end pr-2 py-0 font-bold text-[10px] relative"
+              id="y-axis-kontraksi"
+            ></div>
           </div>
-          <div id="label-obat-area" class="relative w-full border-b border-black flex items-center justify-end pr-2 text-[10px] font-bold leading-tight text-right">Oksitosin<br />Obat IV</div>
-          <div id="label-vitals-area" class="relative w-full border-b border-black flex">
-            <div class="w-16 pl-2 flex flex-col justify-center gap-2 text-[10px] font-bold border-r border-transparent">
-              <div class="flex items-center gap-1"><span class="text-lg leading-none">•</span> Nadi</div>
-              <div class="flex items-center gap-1"><span class="text-base leading-none">↕</span> TD</div>
+          <div
+            id="label-obat-area"
+            class="relative w-full border-b border-black flex items-center justify-end pr-2 text-[10px] font-bold leading-tight text-right"
+          >
+            Obat dan<br />cairan IV
+          </div>
+          <div
+            id="label-vitals-area"
+            class="relative w-full border-b border-black flex"
+          >
+            <div
+              class="w-16 pl-2 flex flex-col justify-center gap-2 text-[10px] font-bold border-r border-transparent"
+            >
+              <div class="flex items-center gap-1">
+                <span class="text-lg leading-none">•</span> Nadi
+              </div>
+              <div class="flex items-center gap-1">
+                <span class="text-base leading-none">↕</span> Tekanan<br />Darah
+              </div>
             </div>
-            <div class="flex-1 flex flex-col justify-between items-end pr-2 py-0 font-bold text-[10px] relative" id="y-axis-vitals"></div>
+            <div
+              class="flex-1 flex flex-col justify-between items-end pr-2 py-0 font-bold text-[10px] relative"
+              id="y-axis-vitals"
+            ></div>
           </div>
-          <div id="label-suhu-area" class="relative w-full border-b border-black flex items-center justify-end pr-2 text-[10px] font-bold">Suhu °C</div>
-          <div id="label-urine-area" class="relative w-full flex flex-col font-bold text-[10px]">
-            <div class="flex-1 flex items-center justify-end pr-2 relative"><span class="absolute left-2 top-1/2 -translate-y-1/2">Urine</span>Protein</div>
-            <div class="flex-1 flex items-center justify-end pr-2 border-t border-gray-300">Aseton</div>
-            <div class="flex-1 flex items-center justify-end pr-2 border-t border-gray-300">Volume</div>
+          <div
+            id="label-suhu-area"
+            class="relative w-full border-b border-black flex items-center justify-end pr-2 text-[10px] font-bold"
+          >
+            Suhu °C
+          </div>
+          <div
+            id="label-urine-area"
+            class="relative w-full flex flex-col font-bold text-[10px]"
+          >
+            <div class="flex-1 flex items-center justify-end pr-2 relative">
+              <span class="absolute left-2 top-1/2 -translate-y-1/2">Urine</span
+              >Protein
+            </div>
+            <div
+              class="flex-1 flex items-center justify-end pr-2 border-t border-gray-300"
+            >
+              Aseton
+            </div>
+            <div
+              class="flex-1 flex items-center justify-end pr-2 border-t border-gray-300"
+            >
+              Volume
+            </div>
           </div>
         </div>
+
         <div class="chart-area-col">
           <div id="chart-svg-container" class="w-full h-full"></div>
         </div>
       </div>
-      <div class="bg-white p-2 text-right text-[9px] text-gray-400 italic">Dicetak otomatis oleh Sistem Partograf Digital</div>
+
+      <div
+        class="bg-gray-50 p-3 border-t border-gray-200 text-center text-xs text-gray-500 version-footer"
+      >
+        Partograf Digital API v1.6 (Data Kelahiran Lengkap)
+      </div>
     </div>
 
     <script>
-      // --- KONFIGURASI DIMENSI ---
-      const TOTAL_CONTAINER_WIDTH = 1100; 
+      // --- 1. KONFIGURASI TAMPILAN (VIEW) ---
+      const TOTAL_CONTAINER_WIDTH = 1100;
       const LEFT_LABEL_WIDTH = 140;
       const CHART_AREA_WIDTH = TOTAL_CONTAINER_WIDTH - LEFT_LABEL_WIDTH;
       const COLS = 16;
       const COL_W = CHART_AREA_WIDTH / COLS;
       const UNIT_W = COL_W / 2;
+      const UNIT_H = 30;
+      const TOP_MARGIN = 15;
 
-      // Layout Rows
       const DJJ_STEPS = 12;
+      const DJJ_H = DJJ_STEPS * UNIT_H;
       const MID_ROWS = 2;
+      const MID_H = MID_ROWS * UNIT_H;
       const CER_ROWS = 10;
+      const CER_H = CER_ROWS * UNIT_H;
+      const TIME_H = 65;
       const KONTRAKSI_ROWS = 5;
+      const KONTRAKSI_H = KONTRAKSI_ROWS * UNIT_H;
+      const OBAT_H = 80;
       const VITALS_STEPS = 12;
+      const VITALS_H = VITALS_STEPS * UNIT_H;
+      const SUHU_H = UNIT_H;
       const URINE_ROWS = 3;
+      const URINE_H = URINE_ROWS * UNIT_H;
+      const TOTAL_H =
+        TOP_MARGIN +
+        DJJ_H +
+        MID_H +
+        CER_H +
+        TIME_H +
+        KONTRAKSI_H +
+        OBAT_H +
+        VITALS_H +
+        SUHU_H +
+        URINE_H;
 
-      let UNIT_H, DJJ_H, MID_H, CER_H, TIME_H, KONTRAKSI_H, OBAT_H, VITALS_H, SUHU_H, URINE_H, TOTAL_H, TOP_MARGIN;
+      const setH = (id, val) =>
+        (document.getElementById(id).style.height = `${val}px`);
+      setH("label-djj-area", DJJ_H + TOP_MARGIN);
+      setH("label-middle-area", MID_H);
+      setH("label-cervix-area", CER_H);
+      setH("label-time-area", TIME_H);
+      setH("label-kontraksi-area", KONTRAKSI_H);
+      setH("label-obat-area", OBAT_H);
+      setH("label-vitals-area", VITALS_H);
+      setH("label-suhu-area", SUHU_H);
+      setH("label-urine-area", URINE_H);
 
-      // Fungsi Mengatur Ukuran Vertikal
-      function updateDimensions(isExport = false) {
-        if (isExport) {
-          // --- MODE EXPORT (Diperpanjang agar memenuhi A4) ---
-          UNIT_H = 20.5; // Ini yang bikin Full Page ke bawah
-          TOP_MARGIN = 15;
-          TIME_H = 55;
-          OBAT_H = 60;
-          document.body.classList.add('exporting');
-        } else {
-          // --- MODE NORMAL (Web View lega) ---
-          UNIT_H = 30; 
-          TOP_MARGIN = 15;
-          TIME_H = 65; 
-          OBAT_H = 80;
-          document.body.classList.remove('exporting');
-        }
+      // --- 2. LOGIKA API & DATA PROCESSING ---
 
-        DJJ_H = DJJ_STEPS * UNIT_H;
-        MID_H = MID_ROWS * UNIT_H;
-        CER_H = CER_ROWS * UNIT_H;
-        KONTRAKSI_H = KONTRAKSI_ROWS * UNIT_H;
-        VITALS_H = VITALS_STEPS * UNIT_H;
-        SUHU_H = UNIT_H;
-        URINE_H = URINE_ROWS * UNIT_H;
-        
-        TOTAL_H = TOP_MARGIN + DJJ_H + MID_H + CER_H + TIME_H + KONTRAKSI_H + OBAT_H + VITALS_H + SUHU_H + URINE_H;
+      let processedData = {
+        pasien: {},
+        djj: [],
+        nadi: [],
+        kontraksi: [],
+        bp: [],
+        pembukaan: [],
+        penurunan: [],
+        ketuban: [],
+        penyusupan: [],
+        suhu: [],
+        urine: [],
+        waktuLabels: {},
+        infoLahir: null,
+      };
 
-        const setH = (id, val) => { const el=document.getElementById(id); if(el) el.style.height = val+"px"; };
-        setH("label-djj-area", DJJ_H + TOP_MARGIN);
-        setH("label-middle-area", MID_H);
-        setH("label-cervix-area", CER_H);
-        setH("label-time-area", TIME_H);
-        setH("label-kontraksi-area", KONTRAKSI_H);
-        setH("label-obat-area", OBAT_H);
-        setH("label-vitals-area", VITALS_H);
-        setH("label-suhu-area", SUHU_H);
-        setH("label-urine-area", URINE_H);
+      function getQueryParams() {
+        const params = new URLSearchParams(window.location.search);
+        return {
+          token: params.get("token"),
+          no_reg: params.get("no_reg"),
+          partograf_id: params.get("partograf_id"),
+        };
       }
 
-      // --- DATA & API ---
-      let processedData = { pasien: {}, djj: [], nadi: [], kontraksi: [], bp: [], pembukaan: [], penurunan: [], ketuban: [], penyusupan: [], suhu: [], urine: [], waktuLabels: {}, infoLahir: null };
-
-      function getDummyPasien() { return { no_reg: "12345678", nama: "Ny. Contoh (Dummy)", umur: 28, gravida: 2, paritas: 1, abortus: 0, persalinan: [{ tanggal_jam_rawat: "2023-10-27T08:00:00", tanggal_jam_mules: "2023-10-27T04:00:00", ketuban_pecah: false, status: "selesai", tanggal_jam_waktu_bayi_lahir: "2023-10-27T16:00:00", jenis_kelamin: "Laki-laki", berat_badan: 3200, panjang_badan: 49, lingkar_dada: 33, lingkar_kepala: 34 }] }; }
-      function getDummyCatatan() { return [{ waktu_catat: "2023-10-27T08:00:00", pembukaan_servik: 4, penurunan_kepala: 4, djj: 140, nadi_ibu: 80, sistolik: 110, diastolik: 70, suhu_ibu: 36.5, air_ketuban: "J", molase: "0", kontraksi: [{ waktu_mulai: "2023-10-27T08:00:00", waktu_selesai: "2023-10-27T08:00:30" }] }]; }
-
       async function fetchData() {
-        const params = new URLSearchParams(window.location.search);
-        const token = params.get("token");
-        const no_reg = params.get("no_reg");
-        const partograf_id = params.get("partograf_id");
-
-        updateDimensions(false); // Init ukuran normal
+        const { token, no_reg, partograf_id } = getQueryParams();
 
         if (!token || !no_reg || !partograf_id) {
+          // Untuk development/preview, kita load data dummy jika tidak ada parameter
+          console.warn(
+            "Parameter tidak lengkap, memuat dummy data untuk preview."
+          );
           processApiData(getDummyPasien(), getDummyCatatan());
-          finalizeLoad();
+          document.getElementById("loading-screen").style.display = "none";
+          document
+            .getElementById("content-container")
+            .classList.remove("hidden");
+          document.getElementById("btn-download").classList.remove("hidden"); // Tampilkan tombol
+          renderInfo();
+          renderChart();
           return;
         }
 
-        const headers = { Authorization: `Bearer ${token}`, "Content-Type": "application/json" };
+        const headers = {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        };
+
         try {
-          const [pRes, cRes] = await Promise.all([
-             fetch(`https://restful-api-bmc-production-v2.up.railway.app/api/pasien/${no_reg}/getData`, { headers }),
-             fetch(`https://restful-api-bmc-production-v2.up.railway.app/api/partograf/${partograf_id}/catatan`, { headers })
-          ]);
-          if(!pRes.ok || !cRes.ok) throw new Error("Gagal mengambil data");
-          const pJson = await pRes.json();
-          const cJson = await cRes.json();
-          processApiData(pJson.data, cJson.data);
-          finalizeLoad();
+          const pasienRes = await fetch(
+            `https://restful-api-bmc-production.up.railway.app/api/pasien/${no_reg}/getData`,
+            { headers }
+          );
+          if (!pasienRes.ok) throw new Error("Gagal mengambil data pasien");
+          const pasienJson = await pasienRes.json();
+
+          const partografRes = await fetch(
+            `https://restful-api-bmc-production.up.railway.app/api/partograf/${partograf_id}/catatan`,
+            { headers }
+          );
+          if (!partografRes.ok)
+            throw new Error("Gagal mengambil catatan partograf");
+          const partografJson = await partografRes.json();
+
+          processApiData(pasienJson.data, partografJson.data);
+
+          document.getElementById("loading-screen").style.display = "none";
+          document
+            .getElementById("content-container")
+            .classList.remove("hidden");
+          document.getElementById("btn-download").classList.remove("hidden"); // Tampilkan tombol
+          renderInfo();
+          renderChart();
         } catch (err) {
-            document.getElementById("loading-screen").classList.add("hidden");
-            document.getElementById("error-screen").classList.remove("hidden");
-            document.getElementById("error-msg").innerText = err.message;
+          showError(err.message);
         }
+      }
+
+      function showError(msg) {
+        document.getElementById("loading-screen").classList.add("hidden");
+        document.getElementById("error-screen").classList.remove("hidden");
+        document.getElementById("error-msg").innerText = msg;
+      }
+
+      // --- DUMMY DATA FOR PREVIEW WITHOUT API ---
+      function getDummyPasien() {
+        return {
+          no_reg: "12345678",
+          nama: "Ny. Contoh",
+          umur: 28,
+          gravida: 2,
+          paritas: 1,
+          abortus: 0,
+          persalinan: [
+            {
+              tanggal_jam_rawat: "2023-10-27T08:00:00",
+              tanggal_jam_mules: "2023-10-27T04:00:00",
+              ketuban_pecah: true,
+              tanggal_jam_ketuban_pecah: "2023-10-27T09:00:00",
+              status: "selesai",
+              tanggal_jam_waktu_bayi_lahir: "2023-10-27T16:00:00",
+              jenis_kelamin: "Laki-laki",
+              berat_badan: 3200,
+              panjang_badan: 49,
+              lingkar_dada: 33,
+              lingkar_kepala: 34,
+            },
+          ],
+        };
+      }
+      function getDummyCatatan() {
+        return [
+          {
+            waktu_catat: "2023-10-27T08:00:00",
+            pembukaan_servik: 4,
+            penurunan_kepala: 4,
+            djj: 140,
+            nadi_ibu: 80,
+            sistolik: 110,
+            diastolik: 70,
+            suhu_ibu: 36.5,
+            air_ketuban: "J",
+            molase: "0",
+            kontraksi: [
+              {
+                waktu_mulai: "2023-10-27T08:00:00",
+                waktu_selesai: "2023-10-27T08:00:30",
+              },
+              {
+                waktu_mulai: "2023-10-27T08:00:00",
+                waktu_selesai: "2023-10-27T08:00:30",
+              },
+              {
+                waktu_mulai: "2023-10-27T08:00:00",
+                waktu_selesai: "2023-10-27T08:00:30",
+              },
+            ],
+          },
+          {
+            waktu_catat: "2023-10-27T12:00:00",
+            pembukaan_servik: 8,
+            penurunan_kepala: 2,
+            djj: 145,
+            nadi_ibu: 84,
+            sistolik: 120,
+            diastolik: 80,
+            suhu_ibu: 36.7,
+            air_ketuban: "J",
+            molase: "0",
+            kontraksi: [
+              {
+                waktu_mulai: "2023-10-27T08:00:00",
+                waktu_selesai: "2023-10-27T08:00:45",
+              },
+              {
+                waktu_mulai: "2023-10-27T08:00:00",
+                waktu_selesai: "2023-10-27T08:00:45",
+              },
+              {
+                waktu_mulai: "2023-10-27T08:00:00",
+                waktu_selesai: "2023-10-27T08:00:45",
+              },
+              {
+                waktu_mulai: "2023-10-27T08:00:00",
+                waktu_selesai: "2023-10-27T08:00:45",
+              },
+            ],
+          },
+        ];
       }
 
       function processApiData(pasien, catatanList) {
         const persalinan = pasien.persalinan[0] || {};
+
         const formatRawDateTime = (isoString) => {
-            if (!isoString) return { date: "-", time: "-" };
-            try {
+          if (!isoString) return { date: "-", time: "-" };
+          try {
             let separator = "T";
             if (isoString.indexOf("T") === -1) separator = " ";
+
             const parts = isoString.split(separator);
             const datePart = parts[0];
-            const timePart = parts.length > 1 && parts[1] ? parts[1].substring(0, 5) : "00:00";
+            const timePart =
+              parts.length > 1 && parts[1] ? parts[1].substring(0, 5) : "00:00";
+
             const [y, m, d] = datePart.split("-");
-            const monthNames = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
+            const monthNames = [
+              "Januari",
+              "Februari",
+              "Maret",
+              "April",
+              "Mei",
+              "Juni",
+              "Juli",
+              "Agustus",
+              "September",
+              "Oktober",
+              "November",
+              "Desember",
+            ];
+
             let formattedDate = datePart;
-            if (y && m && d) formattedDate = `${d} ${monthNames[parseInt(m) - 1]} ${y}`;
-            return { date: formattedDate, time: timePart };
-            } catch (e) {
-            return { date: "-", time: "-" };
+            if (y && m && d) {
+              formattedDate = `${d} ${monthNames[parseInt(m) - 1]} ${y}`;
             }
+
+            return { date: formattedDate, time: timePart };
+          } catch (e) {
+            console.error("Error parsing date:", isoString, e);
+            return { date: "-", time: "-" };
+          }
         };
 
-        const rawat = formatRawDateTime(persalinan.tanggal_jam_rawat);
-        const mules = formatRawDateTime(persalinan.tanggal_jam_mules);
-        const pecah = persalinan.ketuban_pecah ? formatRawDateTime(persalinan.tanggal_jam_ketuban_pecah).time + " WIB" : "Belum Pecah";
+        const rawatData = formatRawDateTime(persalinan.tanggal_jam_rawat);
+        const jamMasukDisplay =
+          rawatData.time !== "-" ? `${rawatData.time} WIB` : "-";
+        const mulesData = formatRawDateTime(persalinan.tanggal_jam_mules);
+        const jamMulesDisplay =
+          mulesData.time !== "-" ? `${mulesData.time} WIB` : "-";
+
+        let ketubanDisplay = "-";
+        if (persalinan.ketuban_pecah === false) {
+          ketubanDisplay = "Belum Pecah";
+        } else if (
+          persalinan.ketuban_pecah === true &&
+          persalinan.tanggal_jam_ketuban_pecah
+        ) {
+          const kRaw = formatRawDateTime(
+            persalinan.tanggal_jam_ketuban_pecah
+          ).time;
+          ketubanDisplay = kRaw !== "-" ? `${kRaw} WIB` : "-";
+        }
 
         processedData.pasien = {
-            noRegistrasi: pasien.no_reg, nama: pasien.nama, umur: `${pasien.umur} th`,
-            g: pasien.gravida, p: pasien.paritas, a: pasien.abortus,
-            tanggal: rawat.date, jam: rawat.time + " WIB", ketuban: pecah, mules: mules.time + " WIB"
+          noRegistrasi: pasien.no_reg,
+          nama: pasien.nama,
+          umur: `${pasien.umur} th`,
+          g: pasien.gravida,
+          p: pasien.paritas,
+          a: pasien.abortus,
+          tanggal: rawatData.date,
+          jam: jamMasukDisplay,
+          ketuban: ketubanDisplay,
+          mules: jamMulesDisplay,
         };
-        
-        // --- LOGIKA DATA BAYI DIKEMBALIKAN DISINI ---
-        if (persalinan.status === "selesai" && persalinan.tanggal_jam_waktu_bayi_lahir) {
-          const lahirInfo = formatRawDateTime(persalinan.tanggal_jam_waktu_bayi_lahir);
+
+        // --- BAGIAN LOGIKA KELAHIRAN LENGKAP ---
+        if (
+          persalinan.status === "selesai" &&
+          persalinan.tanggal_jam_waktu_bayi_lahir
+        ) {
+          const lahirInfo = formatRawDateTime(
+            persalinan.tanggal_jam_waktu_bayi_lahir
+          );
+
+          // Helper: kalau data null tampilkan '-'
           const val = (v) => (v !== null && v !== undefined ? v : "-");
+
           processedData.infoLahir = [
             `Tanggal ${lahirInfo.date} pukul ${lahirInfo.time} WIB`,
-            `bayi lahir spontan, menangis, jenis kelamin ${val(persalinan.jenis_kelamin)},`,
-            `BB ${val(persalinan.berat_badan)} kg, PB ${val(persalinan.panjang_badan)} cm, LD ${val(persalinan.lingkar_dada)} cm, LK ${val(persalinan.lingkar_kepala)} cm`,
+            `bayi lahir spontan, menangis, jenis kelamin ${val(
+              persalinan.jenis_kelamin
+            )},`,
+            `BB ${val(persalinan.berat_badan)} kg, PB ${val(
+              persalinan.panjang_badan
+            )} cm, LD ${val(persalinan.lingkar_dada)} cm, LK ${val(
+              persalinan.lingkar_kepala
+            )} cm`,
           ];
-        } else {
-            processedData.infoLahir = null;
         }
-        
-        if(!catatanList) catatanList = [];
-        catatanList.sort((a,b)=> new Date(a.waktu_catat) - new Date(b.waktu_catat));
-        
-        const active = catatanList.find(c => c.pembukaan_servik >= 4);
-        const start = active ? new Date(active.waktu_catat) : (catatanList[0] ? new Date(catatanList[0].waktu_catat) : new Date());
-        const xOffset = active ? Math.max(0, active.pembukaan_servik - 4) : 0;
 
-        catatanList.forEach(c => {
-            if(!c.waktu_catat) return;
-            const diff = (new Date(c.waktu_catat) - start) / 3600000;
-            const idx = xOffset + diff;
-            
-            if(Math.abs(idx - Math.round(idx)) < 0.1) processedData.waktuLabels[Math.round(idx)] = formatRawDateTime(c.waktu_catat).time;
-            
-            if(c.djj) processedData.djj.push({i:idx, v:c.djj});
-            if(c.pembukaan_servik) processedData.pembukaan.push({i:idx, v:c.pembukaan_servik});
-            if(c.penurunan_kepala) processedData.penurunan.push({i:idx, v:c.penurunan_kepala});
-            if(c.nadi_ibu) processedData.nadi.push({i:idx, v:c.nadi_ibu});
-            if(c.sistolik) processedData.bp.push({i:idx, s:c.sistolik, d:c.diastolik});
-            if(c.suhu_ibu) processedData.suhu.push({i:idx, v:c.suhu_ibu});
-            if(c.air_ketuban) processedData.ketuban.push({i:idx, val:c.air_ketuban});
-            if(c.molase) processedData.penyusupan.push({i:idx, val:c.molase});
-            if(c.protein) processedData.urine.push({i:idx, type:"protein", val:c.protein});
-            if(c.aseton) processedData.urine.push({i:idx, type:"aseton", val:c.aseton});
-            if(c.volume_urine) processedData.urine.push({i:idx, type:"volume", val:c.volume_urine});
+        if (!catatanList) catatanList = [];
+        catatanList.sort(
+          (a, b) => new Date(a.waktu_catat) - new Date(b.waktu_catat)
+        );
 
-            let f=0, d=0;
-            if(c.kontraksi_frekuensi) { f=parseInt(c.kontraksi_frekuensi); d=parseInt(c.kontraksi_durasi||0); }
-            else if(c.kontraksi?.length) { f=c.kontraksi.length; d=25; }
-            if(f>0) processedData.kontraksi.push({i:idx, f:f, d:d});
+        let startTime = null;
+        const activePhaseEntry = catatanList.find(
+          (c) => c.pembukaan_servik >= 4
+        );
+        if (activePhaseEntry) {
+          startTime = new Date(activePhaseEntry.waktu_catat);
+        } else if (catatanList.length > 0) {
+          startTime = new Date(catatanList[0].waktu_catat);
+        } else {
+          renderInfo();
+          return;
+        }
+
+        let initialOpening = activePhaseEntry
+          ? activePhaseEntry.pembukaan_servik
+          : 4;
+        let initialXOffset = Math.max(0, initialOpening - 4);
+
+        catatanList.forEach((c) => {
+          if (!c.waktu_catat) return;
+
+          const currTime = new Date(c.waktu_catat);
+          const diffMs = currTime - startTime;
+          const diffHours = diffMs / (1000 * 60 * 60);
+
+          const chartIndex = initialXOffset + diffHours;
+
+          if (Math.abs(chartIndex - Math.round(chartIndex)) < 0.1) {
+            const safeTime = formatRawDateTime(c.waktu_catat).time;
+            processedData.waktuLabels[Math.round(chartIndex)] = safeTime;
+          }
+
+          if (c.djj) processedData.djj.push({ i: chartIndex, v: c.djj });
+          if (c.pembukaan_servik)
+            processedData.pembukaan.push({
+              i: chartIndex,
+              v: c.pembukaan_servik,
+            });
+          if (c.penurunan_kepala)
+            processedData.penurunan.push({
+              i: chartIndex,
+              v: c.penurunan_kepala,
+            });
+          if (c.nadi_ibu)
+            processedData.nadi.push({ i: chartIndex, v: c.nadi_ibu });
+          if (c.sistolik && c.diastolik)
+            processedData.bp.push({
+              i: chartIndex,
+              s: c.sistolik,
+              d: c.diastolik,
+            });
+          if (c.suhu_ibu)
+            processedData.suhu.push({ i: chartIndex, v: c.suhu_ibu });
+          if (c.air_ketuban)
+            processedData.ketuban.push({ i: chartIndex, val: c.air_ketuban });
+          if (c.molase)
+            processedData.penyusupan.push({ i: chartIndex, val: c.molase });
+          if (c.protein)
+            processedData.urine.push({
+              i: chartIndex,
+              type: "protein",
+              val: c.protein,
+            });
+          if (c.aseton)
+            processedData.urine.push({
+              i: chartIndex,
+              type: "aseton",
+              val: c.aseton,
+            });
+          if (c.volume_urine)
+            processedData.urine.push({
+              i: chartIndex,
+              type: "volume",
+              val: c.volume_urine,
+            });
+
+          // --- UPDATE LOGIC KONTRAKSI (HYBRID) ---
+          let frekuensiFinal = 0;
+          let durasiFinal = 0;
+
+          // Cek 1: Apakah ada input manual? (Prioritas Utama)
+          if (c.kontraksi_frekuensi !== null && c.kontraksi_frekuensi !== undefined) {
+             frekuensiFinal = parseInt(c.kontraksi_frekuensi);
+             durasiFinal = c.kontraksi_durasi ? parseInt(c.kontraksi_durasi) : 0;
+          } 
+          // Cek 2: Kalau manual kosong, hitung dari array kontraksi (Stopwatch/Legacy)
+          else if (c.kontraksi && c.kontraksi.length > 0) {
+             frekuensiFinal = c.kontraksi.length;
+             let maxDur = 0;
+             c.kontraksi.forEach((k) => {
+               const start = new Date(k.waktu_mulai);
+               const end = new Date(k.waktu_selesai);
+               const dur = (end - start) / 1000;
+               if (dur > maxDur) maxDur = dur;
+             });
+             durasiFinal = maxDur;
+          }
+
+          // Push ke data grafik jika ada data valid
+          if (frekuensiFinal > 0) {
+            processedData.kontraksi.push({
+              i: chartIndex,
+              f: frekuensiFinal,
+              d: durasiFinal,
+            });
+          }
         });
-      }
-
-      function finalizeLoad() {
-        document.getElementById("loading-screen").style.display = "none";
-        document.getElementById("content-container").classList.remove("hidden");
-        document.getElementById("btn-download").classList.remove("hidden");
-        renderInfo();
-        renderChart();
       }
 
       function renderInfo() {
         const p = processedData.pasien;
+        if (!p.noRegistrasi) return;
+
         const regBox = document.getElementById("reg-box");
+        const finalReg = Array(7).fill("");
+        (p.noRegistrasi || "")
+          .toString()
+          .split("")
+          .forEach((c, i) => {
+            if (i < 7) finalReg[i] = c;
+          });
         regBox.innerHTML = "";
-        (p.noRegistrasi||"").toString().split("").slice(0,8).forEach(char => {
-            regBox.innerHTML += `<div class="reg-box-item w-6 h-6 flex items-center justify-center border-r border-black last:border-r-0 bg-gray-50 font-bold text-base">${char}</div>`;
-        });
-        ["nama","umur","g","p","a","tanggal","jam","ketuban","mules","puskesmas"].forEach(k => {
-             const el = document.getElementById(k+"-val");
-             if(el) el.innerText = p[k] || "-";
+        finalReg.forEach((char) => {
+          regBox.innerHTML += `<div class="w-6 h-6 flex items-center justify-center border-r border-black last:border-r-0 bg-gray-50 font-bold text-base">${char}</div>`;
         });
 
-        const drawY = (id, start, steps, stepVal, offset=0) => {
-            let h = "";
-            for(let i=0; i<=steps; i++) {
-                let top = offset + i * UNIT_H;
-                h += `<div class="absolute right-1 font-bold flex items-center justify-end w-full h-4 leading-none" style="top:${top}px; transform:translateY(-50%);">${start - i*stepVal}</div>`;
-            }
-            document.getElementById(id).innerHTML = h;
+        document.getElementById("nama-val").innerText = p.nama;
+        document.getElementById("umur-val").innerText = p.umur;
+        document.getElementById("g-val").innerText = p.g;
+        document.getElementById("p-val").innerText = p.p;
+        document.getElementById("a-val").innerText = p.a;
+        document.getElementById("tanggal-val").innerText = p.tanggal;
+        document.getElementById("jam-val").innerText = p.jam;
+        document.getElementById("ketuban-val").innerText = p.ketuban;
+        document.getElementById("mules-val").innerText = p.mules;
+
+        const drawLabels = (id, start, steps, stepVal, offset = 0) => {
+          let html = "";
+          for (let i = 0; i <= steps; i++) {
+            let val = start - i * stepVal;
+            let topPos = offset + i * UNIT_H;
+            html += `<div class="absolute right-1 font-bold flex items-center justify-end w-full h-4 leading-none text-[10px]" style="top:${topPos}px; transform: translateY(-50%);">${val}</div>`;
+          }
+          document.getElementById(id).innerHTML = html;
         };
-        drawY("y-axis-djj", 200, DJJ_STEPS, 10, TOP_MARGIN);
-        drawY("y-axis-cervix", 10, CER_ROWS, 1, 0);
-        drawY("y-axis-vitals", 180, VITALS_STEPS, 10, 0);
-        
-        let kh = "";
-        for(let i=0; i<KONTRAKSI_ROWS; i++) kh += `<div class="absolute right-1 font-bold flex items-center justify-end w-full h-4 leading-none" style="top:${i*UNIT_H}px; transform:translateY(-50%);">${5-i}</div>`;
-        document.getElementById("y-axis-kontraksi").innerHTML = kh;
+        drawLabels("y-axis-djj", 200, 12, 10, TOP_MARGIN);
+        drawLabels("y-axis-cervix", 10, 10, 1, 0);
+        drawLabels("y-axis-vitals", 180, 12, 10, 0);
+
+        let konHtml = "";
+        for (let i = 0; i < 5; i++) {
+          let val = 5 - i;
+          let topPos = i * UNIT_H;
+          konHtml += `<div class="absolute right-1 font-bold flex items-center justify-end w-full h-4 leading-none text-[10px]" style="top:${topPos}px; transform: translateY(-50%);">${val}</div>`;
+        }
+        document.getElementById("y-axis-kontraksi").innerHTML = konHtml;
       }
 
       function renderChart() {
         const d = processedData;
-        let currentY = TOP_MARGIN;
-        
-        let svg = `<svg width="${CHART_AREA_WIDTH}" height="${TOTAL_H + 20}" style="display:block; width:100%;">
-            <defs>
-                <pattern id="stripes" patternUnits="userSpaceOnUse" width="4" height="4" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="4" stroke="#000" stroke-width="1" /></pattern>
-                <pattern id="dots" patternUnits="userSpaceOnUse" width="3" height="3"><circle cx="1.5" cy="1.5" r="0.8" fill="#000" /></pattern>
-                <filter id="bg-text" x="-0.1" y="-0.1" width="1.2" height="1.2">
-                    <feFlood flood-color="white" flood-opacity="0.85" result="bg" />
-                    <feMerge><feMergeNode in="bg"/><feMergeNode in="SourceGraphic"/></feMerge>
-                </filter>
-            </defs>`;
+        let svg = `<svg width="${CHART_AREA_WIDTH}" height="${
+          TOTAL_H + 50
+        }" class="block" style="width:100%;">
+                <defs>
+                    <pattern id="stripes" patternUnits="userSpaceOnUse" width="4" height="4" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="4" stroke="#000" stroke-width="1" /></pattern>
+                    <pattern id="dots" patternUnits="userSpaceOnUse" width="3" height="3"><circle cx="1.5" cy="1.5" r="0.8" fill="#000" /></pattern>
+                    <filter id="bg-text" x="-0.1" y="-0.1" width="1.2" height="1.2">
+                        <feFlood flood-color="white" flood-opacity="0.85" result="bg" />
+                        <feMerge>
+                            <feMergeNode in="bg"/>
+                            <feMergeNode in="SourceGraphic"/>
+                        </feMerge>
+                    </filter>
+                </defs>`;
 
-        const grid = (cnt, cls="grid-line") => {
-            let s = "";
-            for(let i=0; i<=cnt; i++) {
-                let y = currentY + i*UNIT_H;
-                s += `<line x1="0" y1="${y}" x2="${CHART_AREA_WIDTH}" y2="${y}" class="${cls}" />`;
-            }
-            return s;
-        };
-        
+        let currentY = TOP_MARGIN;
+
         // 1. DJJ
-        for(let i=0; i<=DJJ_STEPS; i++) {
-            let y = currentY + i*UNIT_H;
-            let val = 200 - i*10;
-            let cls = (val===180 || val===100) ? "grid-line-thick" : "grid-line";
-            svg += `<line x1="0" y1="${y}" x2="${CHART_AREA_WIDTH}" y2="${y}" class="${cls}" />`;
+        for (let i = 0; i <= DJJ_STEPS; i++) {
+          let val = 200 - i * 10;
+          let y = currentY + i * UNIT_H;
+          let cls =
+            val === 180 || val === 100 ? "grid-line-thick" : "grid-line";
+          svg += `<line x1="0" y1="${y}" x2="${CHART_AREA_WIDTH}" y2="${y}" class="${cls}" />`;
         }
-        let dPts = "";
-        d.djj.forEach(p => {
-            let x = p.i * COL_W; let y = currentY + ((200-p.v)/10)*UNIT_H; dPts += `${x},${y} `;
-            svg += `<circle cx="${x}" cy="${y}" r="3" fill="#2563eb" />`;
+        let djjPoints = "";
+        d.djj.forEach((item) => {
+          let x = item.i * COL_W;
+          let y = currentY + ((200 - item.v) / 10) * UNIT_H;
+          djjPoints += `${x},${y} `;
+          svg += `<circle cx="${x}" cy="${y}" r="3" fill="#2563eb" />`;
         });
-        if(dPts) svg += `<polyline points="${dPts}" fill="none" stroke="#2563eb" stroke-width="2" />`;
+        if (djjPoints)
+          svg += `<polyline points="${djjPoints}" fill="none" stroke="#2563eb" stroke-width="2" />`;
         currentY += DJJ_H;
 
-        // 2. Air & Penyusupan
+        // 2. TENGAH
         svg += `<line x1="0" y1="${currentY}" x2="${CHART_AREA_WIDTH}" y2="${currentY}" class="grid-line-thick" />`;
-        svg += grid(MID_ROWS);
-        d.ketuban.forEach(p => svg += `<text x="${p.i*COL_W + UNIT_W}" y="${currentY + UNIT_H/2 + 4}" text-anchor="middle" class="data-text text-blue-800" font-size="${UNIT_H*0.6}">${p.val}</text>`);
-        d.penyusupan.forEach(p => svg += `<text x="${p.i*COL_W + UNIT_W}" y="${currentY + UNIT_H*1.5 + 4}" text-anchor="middle" class="data-text text-blue-800" font-size="${UNIT_H*0.6}">${p.val}</text>`);
+        for (let i = 1; i <= MID_ROWS; i++) {
+          let y = currentY + i * UNIT_H;
+          svg += `<line x1="0" y1="${y}" x2="${CHART_AREA_WIDTH}" y2="${y}" class="grid-line" />`;
+        }
+        d.ketuban.forEach((item) => {
+          let x = item.i * COL_W + UNIT_W / 2;
+          svg += `<text x="${x}" y="${
+            currentY + UNIT_H / 2 + 4
+          }" text-anchor="middle" class="data-text text-blue-800">${
+            item.val
+          }</text>`;
+        });
+        d.penyusupan.forEach((item) => {
+          let x = item.i * COL_W + UNIT_W / 2;
+          svg += `<text x="${x}" y="${
+            currentY + UNIT_H + UNIT_H / 2 + 4
+          }" text-anchor="middle" class="data-text text-blue-800">${
+            item.val
+          }</text>`;
+        });
         currentY += MID_H;
 
-        // 3. Serviks
+        // 3. SERVIKS
         svg += `<line x1="0" y1="${currentY}" x2="${CHART_AREA_WIDTH}" y2="${currentY}" class="grid-line-thick" />`;
-        svg += grid(CER_ROWS);
-        const gY = (cm) => currentY + (10-cm)*UNIT_H;
-        svg += `<line x1="0" y1="${gY(4)}" x2="${6*COL_W}" y2="${gY(10)}" stroke="#ca8a04" stroke-width="2" />`; 
-        svg += `<line x1="${3.5*COL_W}" y1="${gY(4)}" x2="${9.5*COL_W}" y2="${gY(10)}" stroke="#dc2626" stroke-width="2" />`; 
-        
-        // --- RENDER DATA BAYI DIKEMBALIKAN DISINI ---
+        for (let i = 1; i <= CER_ROWS; i++) {
+          let y = currentY + i * UNIT_H;
+          svg += `<line x1="0" y1="${y}" x2="${CHART_AREA_WIDTH}" y2="${y}" class="grid-line" />`;
+        }
+        const getCX = (h) => h * COL_W;
+        const getCY = (cm) => currentY + (10 - cm) * UNIT_H;
+        svg += `<line x1="${getCX(0)}" y1="${getCY(4)}" x2="${getCX(
+          6
+        )}" y2="${getCY(10)}" stroke="#eab308" stroke-width="2" />`;
+        svg += `<text x="${getCX(2)}" y="${getCY(
+          5.8
+        )}" font-size="10" font-weight="bold" fill="#ca8a04" transform="rotate(-26 ${getCX(
+          2
+        )} ${getCY(5.8)})">WASPADA</text>`;
+        svg += `<line x1="${getCX(3.5)}" y1="${getCY(4)}" x2="${getCX(
+          9.5
+        )}" y2="${getCY(10)}" stroke="#dc2626" stroke-width="2" />`;
+        svg += `<text x="${getCX(5.5)}" y="${getCY(
+          5.8
+        )}" font-size="10" font-weight="bold" fill="#dc2626" transform="rotate(-26 ${getCX(
+          5.5
+        )} ${getCY(5.8)})">BERTINDAK</text>`;
+
+        // --- RENDER INFO LAHIR (DENGAN BACKGROUND PUTIH SUPAYA JELAS) ---
         if (d.infoLahir) {
+          // Posisi X = Index 8.5 (Tengah kotak 9)
           let textX = 12 * COL_W;
+          // Posisi Y = Tengah area Serviks
           let textY = currentY + CER_H / 2;
-          svg += `<text x="${textX}" y="${textY}" text-anchor="middle" class="handwritten" font-size="14" filter="url(#bg-text)">`;
+
+          // Menggunakan text-anchor="middle" untuk centering persis di titik 8.5
+          svg += `<text x="${textX}" y="${textY}" text-anchor="middle" class="handwritten" font-size="16" filter="url(#bg-text)">`;
+
+          // Loop baris text
           d.infoLahir.forEach((line, index) => {
+            // dy="1.2em" untuk baris berikutnya, baris pertama 0
             let dy = index === 0 ? 0 : 20;
             svg += `<tspan x="${textX}" dy="${dy}">${line}</tspan>`;
           });
+
           svg += `</text>`;
         }
-        
-        let cPts = "";
-        d.pembukaan.forEach(p => {
-            let x = p.i*COL_W; let y = gY(p.v); cPts += `${x},${y} `;
-            svg += `<g transform="translate(${x},${y})"><line x1="-5" y1="-5" x2="5" y2="5" stroke="#ef4444" stroke-width="2.5"/><line x1="5" y1="-5" x2="-5" y2="5" stroke="#ef4444" stroke-width="2.5"/></g>`;
+
+        let pembukaanPts = "";
+        d.pembukaan.forEach((item) => {
+          let x = item.i * COL_W;
+          let y = getCY(item.v);
+          pembukaanPts += `${x},${y} `;
+          svg += `<g transform="translate(${x}, ${y})"><line x1="-6" y1="-6" x2="6" y2="6" stroke="purple" stroke-width="3" /><line x1="6" y1="-6" x2="-6" y2="6" stroke="purple" stroke-width="3" /></g>`;
         });
-        if(cPts) svg += `<polyline points="${cPts}" fill="none" stroke="#ef4444" stroke-width="1.5" />`;
-        let pPts = "";
-        d.penurunan.forEach(p => {
-             let x = p.i*COL_W; let y = gY(p.v); pPts += `${x},${y} `;
-             svg += `<circle cx="${x}" cy="${y}" r="4" fill="none" stroke="#10b981" stroke-width="2" />`;
+        if (pembukaanPts)
+          svg += `<polyline points="${pembukaanPts}" fill="none" stroke="purple" stroke-width="2" />`;
+
+        let penurunanPts = "";
+        d.penurunan.forEach((item) => {
+          let x = item.i * COL_W;
+          let y = getCY(item.v);
+          penurunanPts += `${x},${y} `;
+          svg += `<circle cx="${x}" cy="${y}" r="5" fill="none" stroke="green" stroke-width="3" />`;
         });
-        if(pPts) svg += `<polyline points="${pPts}" fill="none" stroke="#10b981" stroke-width="1.5" stroke-dasharray="4" />`;
+        if (penurunanPts)
+          svg += `<polyline points="${penurunanPts}" fill="none" stroke="green" stroke-width="2" stroke-dasharray="4" />`;
         currentY += CER_H;
 
-        // 4. Waktu
-        let timeBot = currentY + TIME_H;
-        for(let i=0; i<=COLS; i++) {
-            let x = i*COL_W;
-            svg += `<line x1="${x}" y1="${TOP_MARGIN}" x2="${x}" y2="${timeBot}" class="grid-line-major" />`;
-            if(i<COLS) {
-                svg += `<line x1="${x+UNIT_W}" y1="${TOP_MARGIN}" x2="${x+UNIT_W}" y2="${timeBot}" class="grid-line-minor" />`;
-                svg += `<rect x="${x}" y="${currentY}" width="${COL_W}" height="${TIME_H/2}" fill="none" stroke="black" stroke-width="1"/>`;
-                svg += `<rect x="${x}" y="${currentY+TIME_H/2}" width="${COL_W}" height="${TIME_H/2}" fill="none" stroke="black" stroke-width="1"/>`;
-            }
+        // 4. WAKTU & GRID
+        let timeBottomY = currentY + TIME_H;
+        for (let i = 0; i <= COLS; i++) {
+          let x = i * COL_W;
+          svg += `<line x1="${x}" y1="${TOP_MARGIN}" x2="${x}" y2="${timeBottomY}" class="grid-line-major" />`;
+          if (i < COLS) {
+            let xHalf = x + UNIT_W;
+            svg += `<line x1="${xHalf}" y1="${TOP_MARGIN}" x2="${xHalf}" y2="${timeBottomY}" class="grid-line-minor" />`;
+            let boxY = currentY;
+            svg += `<rect x="${x}" y="${boxY}" width="${COL_W}" height="30" fill="white" stroke="black" stroke-width="1"/>`;
+            svg += `<rect x="${x}" y="${
+              boxY + 30
+            }" width="${COL_W}" height="30" fill="white" stroke="black" stroke-width="1"/>`;
+          }
         }
-        const tMid = currentY + TIME_H*0.75 + 4;
-        for(const [k,v] of Object.entries(d.waktuLabels)) {
-             svg += `<text x="${k*COL_W + COL_W/2}" y="${tMid}" text-anchor="middle" class="label-waktu text-blue-800" font-size="9">${v}</text>`;
+        for (const [idxStr, val] of Object.entries(d.waktuLabels)) {
+          let idx = parseFloat(idxStr);
+          let tX = idx * COL_W + COL_W / 2;
+          svg += `<text x="${tX}" y="${
+            currentY + 30 + 19
+          }" text-anchor="middle" class="label-waktu text-blue-800">${val}</text>`;
         }
-        for(let i=0; i<COLS; i++) svg += `<text x="${i*COL_W + COL_W/2}" y="${currentY + TIME_H*0.25 + 4}" text-anchor="middle" class="label-waktu" font-size="9">${i+1}</text>`;
+        for (let i = 0; i < COLS; i++) {
+          svg += `<text x="${i * COL_W + COL_W / 2}" y="${
+            currentY + 19
+          }" text-anchor="middle" class="label-waktu">${i + 1}</text>`;
+        }
         currentY += TIME_H;
 
-        // 5. Kontraksi
-        svg += grid(KONTRAKSI_ROWS);
-        for(let i=0; i<=COLS; i++) {
-             let x = i*COL_W;
-             svg += `<line x1="${x}" y1="${currentY}" x2="${x}" y2="${currentY+KONTRAKSI_H}" class="grid-line-major" />`;
-             if(i<COLS) svg += `<line x1="${x+UNIT_W}" y1="${currentY}" x2="${x+UNIT_W}" y2="${currentY+KONTRAKSI_H}" class="grid-line-minor" />`;
+        // 5. KONTRAKSI
+        for (let i = 0; i <= KONTRAKSI_ROWS; i++) {
+          let y = currentY + i * UNIT_H;
+          svg += `<line x1="0" y1="${y}" x2="${CHART_AREA_WIDTH}" y2="${y}" class="grid-line" />`;
         }
-        d.kontraksi.forEach(k => {
-            let h = k.f * UNIT_H;
-            let y = currentY + KONTRAKSI_H - h;
-            let fill = k.d < 20 ? "url(#dots)" : k.d <= 40 ? "url(#stripes)" : "black";
-            svg += `<rect x="${k.i*COL_W}" y="${y}" width="${UNIT_W}" height="${h}" fill="${fill}" stroke="black" />`;
+        for (let i = 0; i <= COLS; i++) {
+          let x = i * COL_W;
+          svg += `<line x1="${x}" y1="${currentY}" x2="${x}" y2="${
+            currentY + KONTRAKSI_H
+          }" class="grid-line-major" />`;
+          if (i < COLS) {
+            let xHalf = x + UNIT_W;
+            svg += `<line x1="${xHalf}" y1="${currentY}" x2="${xHalf}" y2="${
+              currentY + KONTRAKSI_H
+            }" class="grid-line-minor" />`;
+          }
+        }
+        d.kontraksi.forEach((item) => {
+          let kX = item.i * COL_W;
+          let kW = UNIT_W;
+          let kH = item.f * UNIT_H;
+          let kY = currentY + KONTRAKSI_H - kH;
+          let fill =
+            item.d < 20
+              ? "url(#dots)"
+              : item.d <= 40
+              ? "url(#stripes)"
+              : "black";
+          svg += `<rect x="${kX}" y="${kY}" width="${kW}" height="${kH}" fill="${fill}" stroke="black" />`;
         });
         currentY += KONTRAKSI_H;
 
-        // 6. Obat
+        // 6. OBAT
         svg += `<line x1="0" y1="${currentY}" x2="${CHART_AREA_WIDTH}" y2="${currentY}" class="grid-line-thick" />`;
-        svg += `<line x1="0" y1="${currentY+OBAT_H}" x2="${CHART_AREA_WIDTH}" y2="${currentY+OBAT_H}" class="grid-line" />`;
-        for(let i=0; i<=COLS; i++) svg += `<line x1="${i*COL_W}" y1="${currentY}" x2="${i*COL_W}" y2="${currentY+OBAT_H}" class="grid-line-major" />`;
+        svg += `<line x1="0" y1="${
+          currentY + OBAT_H
+        }" x2="${CHART_AREA_WIDTH}" y2="${
+          currentY + OBAT_H
+        }" class="grid-line" />`;
+        for (let i = 0; i <= COLS; i++) {
+          let x = i * COL_W;
+          svg += `<line x1="${x}" y1="${currentY}" x2="${x}" y2="${
+            currentY + OBAT_H
+          }" class="grid-line-major" />`;
+        }
         currentY += OBAT_H;
 
-        // 7. Vitals
-        for(let i=0; i<=VITALS_STEPS; i++) {
-            let y = currentY + i*UNIT_H;
-            let val = 180 - i*10;
-            let cls = (val===100 || val===180) ? "grid-line-thick" : "grid-line";
-            svg += `<line x1="0" y1="${y}" x2="${CHART_AREA_WIDTH}" y2="${y}" class="${cls}" />`;
+        // 7. VITAL SIGNS
+        for (let i = 0; i <= VITALS_STEPS; i++) {
+          let val = 180 - i * 10;
+          let y = currentY + i * UNIT_H;
+          let cls =
+            val === 100 || val === 180 ? "grid-line-thick" : "grid-line";
+          svg += `<line x1="0" y1="${y}" x2="${CHART_AREA_WIDTH}" y2="${y}" class="grid-line" />`;
         }
-        let totalBot = VITALS_H + SUHU_H + URINE_H;
-        for(let i=0; i<=COLS; i++) {
-            let x = i*COL_W;
-            svg += `<line x1="${x}" y1="${currentY}" x2="${x}" y2="${currentY+totalBot}" class="grid-line-major" />`;
-            if(i<COLS) svg += `<line x1="${x+UNIT_W}" y1="${currentY}" x2="${x+UNIT_W}" y2="${currentY+totalBot}" class="grid-line-minor" />`;
+        let vitalsBottom = currentY + VITALS_H;
+        for (let i = 0; i <= COLS; i++) {
+          let x = i * COL_W;
+          svg += `<line x1="${x}" y1="${currentY}" x2="${x}" y2="${vitalsBottom}" class="grid-line-major" />`;
+          if (i < COLS) {
+            let xHalf = x + UNIT_W;
+            svg += `<line x1="${xHalf}" y1="${currentY}" x2="${xHalf}" y2="${vitalsBottom}" class="grid-line-minor" />`;
+          }
         }
-        d.bp.forEach(p => {
-             let x = p.i*COL_W;
-             let sY = currentY + ((180-p.s)/10)*UNIT_H;
-             let dY = currentY + ((180-p.d)/10)*UNIT_H;
-             svg += `<line x1="${x}" y1="${sY}" x2="${x}" y2="${dY}" stroke="#2563eb" stroke-width="2" />`;
-             svg += `<path d="M${x-3},${sY+4} L${x},${sY} L${x+3},${sY+4}" fill="none" stroke="#2563eb" stroke-width="2" />`;
-             svg += `<path d="M${x-3},${dY-4} L${x},${dY} L${x+3},${dY-4}" fill="none" stroke="#2563eb" stroke-width="2" />`;
+        d.bp.forEach((item) => {
+          let x = item.i * COL_W;
+          let sysY = currentY + ((180 - item.s) / 10) * UNIT_H;
+          let diaY = currentY + ((180 - item.d) / 10) * UNIT_H;
+          svg += `<line x1="${x}" y1="${sysY}" x2="${x}" y2="${diaY}" stroke="blue" stroke-width="2" />`;
+          svg += `<path d="M${x - 4},${sysY + 6} L${x},${sysY} L${x + 4},${
+            sysY + 6
+          }" fill="none" stroke="blue" stroke-width="2" />`;
+          svg += `<path d="M${x - 4},${diaY - 6} L${x},${diaY} L${x + 4},${
+            diaY - 6
+          }" fill="none" stroke="blue" stroke-width="2" />`;
         });
-        let nPts = "";
-        d.nadi.forEach(p => {
-            let x = p.i*COL_W; let y = currentY + ((180-p.v)/10)*UNIT_H; nPts += `${x},${y} `;
-            svg += `<circle cx="${x}" cy="${y}" r="2" fill="black" />`;
+        let nadiPts = "";
+        d.nadi.forEach((item) => {
+          let x = item.i * COL_W;
+          let y = currentY + ((180 - item.v) / 10) * UNIT_H;
+          nadiPts += `${x},${y} `;
+          svg += `<circle cx="${x}" cy="${y}" r="3" fill="black" />`;
         });
-        if(nPts) svg += `<polyline points="${nPts}" fill="none" stroke="black" stroke-width="1" />`;
+        if (nadiPts)
+          svg += `<polyline points="${nadiPts.trim()}" fill="none" stroke="black" stroke-width="1.5" />`;
         currentY += VITALS_H;
 
-        // 8. Suhu & Urine
+        // 8. SUHU & 9. URINE
+        let totalBottomH = SUHU_H + URINE_ROWS * UNIT_H;
         svg += `<line x1="0" y1="${currentY}" x2="${CHART_AREA_WIDTH}" y2="${currentY}" class="grid-line-thick" />`;
-        svg += grid(1 + URINE_ROWS);
-        d.suhu.forEach(p => svg += `<text x="${p.i*COL_W + COL_W/2}" y="${currentY + UNIT_H/2 + 4}" text-anchor="middle" class="data-text text-blue-800" font-size="${UNIT_H*0.7}">${p.v}</text>`);
-        d.urine.forEach(p => {
-             let uY = currentY + SUHU_H;
-             let off = (p.type==="protein"?0.5 : p.type==="aseton"?1.5 : 2.5);
-             svg += `<text x="${p.i*COL_W + COL_W/2}" y="${uY + off*UNIT_H + 4}" text-anchor="middle" class="data-text text-blue-800" font-size="${UNIT_H*0.7}">${p.val}</text>`;
+        for (let i = 0; i <= COLS; i++) {
+          let x = i * COL_W;
+          svg += `<line x1="${x}" y1="${currentY}" x2="${x}" y2="${
+            currentY + totalBottomH
+          }" class="grid-line-major" />`;
+        }
+        for (let i = 1; i <= 1 + URINE_ROWS; i++) {
+          let y = currentY + i * UNIT_H;
+          svg += `<line x1="0" y1="${y}" x2="${CHART_AREA_WIDTH}" y2="${y}" class="grid-line" />`;
+        }
+        d.suhu.forEach((item) => {
+          let x = item.i * COL_W + COL_W / 2;
+          svg += `<text x="${x}" y="${
+            currentY + UNIT_H / 2 + 4
+          }" text-anchor="middle" class="data-text text-blue-800">${
+            item.v
+          }</text>`;
+        });
+        d.urine.forEach((item) => {
+          let uY = currentY + SUHU_H;
+          let x = item.i * COL_W + COL_W / 2;
+          if (item.type === "protein")
+            svg += `<text x="${x}" y="${
+              uY + 0.5 * UNIT_H + 4
+            }" text-anchor="middle" class="data-text text-blue-800">${
+              item.val
+            }</text>`;
+          if (item.type === "aseton")
+            svg += `<text x="${x}" y="${
+              uY + 1.5 * UNIT_H + 4
+            }" text-anchor="middle" class="data-text text-blue-800">${
+              item.val
+            }</text>`;
+          if (item.type === "volume")
+            svg += `<text x="${x}" y="${
+              uY + 2.5 * UNIT_H + 4
+            }" text-anchor="middle" class="data-text text-blue-800">${
+              item.val
+            }</text>`;
         });
 
         svg += `</svg>`;
         document.getElementById("chart-svg-container").innerHTML = svg;
       }
 
-      function showToast(msg, ok=false) {
-        const t = document.getElementById("toast-message");
-        document.getElementById("toast-text").innerText = msg;
-        t.className = `shadow-xl ${ok?'toast-success':'toast-error'} opacity-100`;
-        t.style.opacity = 1;
-        setTimeout(() => t.style.opacity = 0, 4000);
+      function showToast(message, isSuccess = false) {
+        const toast = document.getElementById("toast-message");
+        const toastText = document.getElementById("toast-text");
+
+        toast.classList.remove("toast-success", "toast-error", "opacity-0");
+        toast.classList.add(
+          isSuccess ? "toast-success" : "toast-error",
+          "opacity-100"
+        );
+
+        toastText.innerText = message;
+        toast.style.opacity = 1;
+        toast.style.pointerEvents = "auto";
+
+        setTimeout(() => {
+          toast.style.opacity = 0;
+          toast.style.pointerEvents = "none";
+        }, 5000);
       }
 
-      async function downloadPDF(btn) {
-        if(btn.classList.contains("disabled")) return;
+      /**
+       * Mengirim data PDF (Base64) ke lingkungan Native (React Native WebView)
+       */
+      function sendPdfToNative(base64Data, filename) {
+        if (
+          window.ReactNativeWebView &&
+          window.ReactNativeWebView.postMessage
+        ) {
+          const message = JSON.stringify({
+            action: "EXPORT_PDF",
+            filename: filename,
+            data: base64Data,
+          });
+          window.ReactNativeWebView.postMessage(message);
+        } else {
+          // Fallback for local browser testing or missing bridge
+          console.error(
+            "ReactNativeWebView bridge is missing. Export aborted."
+          );
+          // Mengganti alert() dengan showToast()
+          showToast(
+            "Error Bridge: WebView bridge tidak tersedia. Pastikan Anda menjalankan ini di emulator/perangkat.",
+            false
+          );
 
-        updateDimensions(true); // MODE EXPORT
-        renderInfo();
-        renderChart();
-        
-        window.scrollTo(0, 0);
-        await new Promise(r => setTimeout(r, 600));
-
-        btn.classList.add("hidden");
-        document.getElementById("pdf-status").classList.remove("hidden");
-
-        const el = document.getElementById("content-container");
-        const nm = (processedData.pasien.nama || "Pasien").replace(/[^a-zA-Z0-9]/g,"_");
-        
-        const opt = {
-          margin: [5, 5, 5, 5],
-          filename: `Partograf_${nm}.pdf`,
-          image: { type: 'jpeg', quality: 0.98 },
-          html2canvas: { 
-            scale: 2, 
-            useCORS: true,
-            windowWidth: 1200, // KUNCI AGAR TIDAK KEPOTONG KANAN
-            width: 1200 
-          },
-          jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
-        };
-
-        try {
-          const pdfDataUri = await html2pdf().set(opt).from(el).output('datauristring');
-          const base64 = pdfDataUri.split(',')[1];
-          
-          if(window.ReactNativeWebView) {
-             window.ReactNativeWebView.postMessage(JSON.stringify({ action: "EXPORT_PDF", filename: opt.filename, data: base64 }));
-          } else {
-             html2pdf().set(opt).from(el).save();
-             resetView();
-          }
-        } catch(e) {
-          showToast("Gagal: " + e.message);
-          resetView();
+          // Re-enable button manually
+          document.getElementById("pdf-status").classList.add("hidden");
+          document.getElementById("btn-download").classList.remove("hidden");
         }
       }
 
-      function resetView() {
-        document.getElementById("pdf-status").classList.add("hidden");
-        document.getElementById("btn-download").classList.remove("hidden");
-        updateDimensions(false); 
-        renderInfo();
-        renderChart();
-      }
+      // --- HANDLER UNTUK PESAN BALASAN DARI NATIVE ---
+      // Native akan mengirim 'PDF_SHARED' setelah berhasil menerima data atau gagal memprosesnya
+      window.addEventListener("message", (event) => {
+        let data;
+        try {
+          // Pastikan pesan datang dari Native dan dimulai dengan format JSON kita
+          if (
+            typeof event.data !== "string" ||
+            !event.data.startsWith('{"action":')
+          ) {
+            return;
+          }
+          data = JSON.parse(event.data);
+        } catch (e) {
+          console.error("Error parsing message from Native:", e);
+          return;
+        }
 
-      window.addEventListener("message", (e) => {
-         try { const d=JSON.parse(e.data); if(d.action==="PDF_SHARED" || d.action==="PDF_ERROR") resetView(); } catch(err){}
+        if (data.action === "PDF_SHARED") {
+          // 1. Sembunyikan Loading
+          document.getElementById("pdf-status").classList.add("hidden");
+          document.getElementById("btn-download").classList.remove("hidden");
+
+          // 2. Tampilkan Toast Sukses
+          showToast(
+            "PDF berhasil diproses dan ditampilkan di opsi Berbagi.",
+            true
+          );
+        } else if (data.action === "PDF_ERROR") {
+          // Jika Native mengirimkan pesan error balik
+          // 1. Sembunyikan Loading
+          document.getElementById("pdf-status").classList.add("hidden");
+          document.getElementById("btn-download").classList.remove("hidden");
+
+          // 2. Tampilkan Toast Error
+          showToast(
+            `Gagal: ${
+              data.message ||
+              "Terjadi kesalahan saat memproses di aplikasi native."
+            }`,
+            false
+          );
+        }
       });
+
+      // --- 3. EXPORT TO PDF FUNCTIONALITY ---
+      async function downloadPDF(button) {
+        if (button.classList.contains("disabled")) return;
+
+        button.classList.add("hidden");
+        document.getElementById("pdf-status").classList.remove("hidden");
+        document.getElementById("status-text").innerText = "Memproses PDF...";
+
+        try {
+          const element = document.getElementById("content-container");
+
+          // --- PERBAIKAN 1: Sanitasi Nama File ---
+          // Ganti semua karakter SELAIN huruf dan angka menjadi garis bawah (_)
+          const rawNoReg = processedData.pasien.noRegistrasi || "tanpa-nama";
+          const cleanNoReg = rawNoReg.replace(/[^a-zA-Z0-9]/g, "_");
+          const filename = `Partograf-${cleanNoReg}.pdf`;
+
+          const opt = {
+            margin: [5, 5, 5, 5],
+            filename: filename,
+            image: { type: "jpeg", quality: 0.98 },
+            html2canvas: { scale: 2, useCORS: true },
+            jsPDF: { unit: "mm", format: "a4", orientation: "portrait" },
+          };
+
+          document.getElementById("status-text").innerText =
+            "Mengekspor ke A4...";
+
+          // Ambil Data URI
+          const pdfDataUri = await html2pdf()
+            .set(opt)
+            .from(element)
+            .output("datauristring");
+
+          // --- PERBAIKAN 2: Pastikan Murni Base64 ---
+          // Split berdasarkan koma. [0] adalah header, [1] adalah datanya.
+          const base64Data = pdfDataUri.split(",")[1];
+
+          document.getElementById("status-text").innerText =
+            "Mengirim data ke Native...";
+          sendPdfToNative(base64Data, filename);
+        } catch (err) {
+          console.error("PDF Export Error:", err);
+          showToast(`Gagal generate PDF: ${err.message}`, false);
+          document.getElementById("pdf-status").classList.add("hidden");
+          button.classList.remove("hidden");
+        }
+      }
 
       fetchData();
     </script>
