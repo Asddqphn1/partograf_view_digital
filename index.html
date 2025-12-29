@@ -5,8 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Partograf Digital API - Tampilan Final</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <style>
       body {
         font-family: "Arial", sans-serif;
@@ -62,13 +61,13 @@
 
       /* Layout */
       .main-container {
-        width: 1100px;
+        width: 780px;
         margin: 0 auto;
         background: white;
         box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
         border: 1px solid #e5e7eb;
       }
-      .chart-row {
+      .chart-row {  
         display: flex;
         width: 100%;
       }
@@ -1413,121 +1412,62 @@
       });
 
       // --- 3. EXPORT TO PDF FUNCTIONALITY (OPTIMIZED & DEBUGGED) ---
-      async function downloadPDF(button) {
-        if (button.classList.contains("disabled")) return;
+      async function downloadPDF(btn) {
+        if(btn.classList.contains("disabled")) return;
 
-        // 1. UI Loading
-        button.classList.add("hidden");
-        const statusBadge = document.getElementById("pdf-status");
-        const statusText = document.getElementById("status-text");
-        statusBadge.classList.remove("hidden");
-        statusText.innerText = "Memproses Layout...";
+        updateDimensions(true); // MODE EXPORT
+        renderInfo();
+        renderChart();
+        
+        window.scrollTo(0, 0);
+        await new Promise(r => setTimeout(r, 600));
 
-        const element = document.getElementById("content-container");
-        const mainContainer = element.querySelector(".main-container");
+        btn.classList.add("hidden");
+        document.getElementById("pdf-status").classList.remove("hidden");
 
-        // Simpan style asli
-        const originalWidth = mainContainer.style.width;
-        const originalTransform = mainContainer.style.transform;
-        const originalMargin = mainContainer.style.margin;
+        const el = document.getElementById("content-container");
+        const nm = (processedData.pasien.nama || "Pasien").replace(/[^a-zA-Z0-9]/g,"_");
+        
+        const opt = {
+          margin: [5, 5, 5, 5],
+          filename: `Partograf_${nm}.pdf`,
+          image: { type: 'jpeg', quality: 0.98 },
+          html2canvas: { 
+            scale: 2, 
+            useCORS: true,
+            windowWidth: 1200, // KUNCI AGAR TIDAK KEPOTONG KANAN
+            width: 1200 
+          },
+          jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+        };
 
         try {
-          // Nama file
-          const rawNama = processedData.pasien.nama || "TanpaNama";
-          const cleanNama = rawNama
-            .replace(/[^a-zA-Z0-9 ]/g, "")
-            .replace(/\s+/g, "_");
-          const filename = `Partograf_Bunda_${cleanNama}.pdf`;
-
-          // --- KUNCI: Setting Ukuran Canvas ---
-          mainContainer.style.width = "1100px";
-          mainContainer.style.margin = "0";
-          mainContainer.style.transform = "none";
-
-          // Tunggu reflow
-          await new Promise((resolve) => setTimeout(resolve, 200));
-
-          statusText.innerText = "Menggenerate Gambar...";
-
-          // Capture (Turunkan sedikit scale dan quality agar tidak crash memori di HP kentang)
-          const canvas = await html2canvas(mainContainer, {
-            scale: 1.2, // Turunkan dari 1.5 ke 1.2 agar lebih ringan
-            useCORS: true,
-            logging: false,
-            windowWidth: 1100,
-            scrollY: 0,
-            backgroundColor: "#ffffff",
-          });
-
-          statusText.innerText = "Menyusun PDF...";
-
-          // --- STEP: FIT-TO-PAGE CALCULATION ---
-          // Gunakan kualitas 0.7 (70%) agar string base64 tidak terlalu panjang buat Bridge
-          const imgData = canvas.toDataURL("image/jpeg", 0.7); 
-          const { jsPDF } = window.jspdf;
-
-          const pdfWidth = 210;
-          const pdfHeight = 297;
-          const margin = 5;
-
-          const printWidth = pdfWidth - margin * 2;
-          const printHeight = pdfHeight - margin * 2;
-          const imgWidth = canvas.width;
-          const imgHeight = canvas.height;
-
-          const widthRatio = printWidth / imgWidth;
-          const heightRatio = printHeight / imgHeight;
-          const finalScale = Math.min(widthRatio, heightRatio);
-          const finalW = imgWidth * finalScale;
-          const finalH = imgHeight * finalScale;
-          const xPos = (pdfWidth - finalW) / 2;
-          const yPos = margin;
-
-          const pdf = new jsPDF({
-            orientation: "portrait",
-            unit: "mm",
-            format: "a4",
-          });
-
-          pdf.addImage(imgData, "JPEG", xPos, yPos, finalW, finalH);
-
-          // Kembalikan Style Asli
-          mainContainer.style.width = originalWidth;
-          mainContainer.style.transform = originalTransform;
-          mainContainer.style.margin = originalMargin;
-
-          statusText.innerText = "Mengirim ke Aplikasi...";
-
-          const pdfBase64 = pdf.output("datauristring").split(",")[1];
-
-          // Kirim ke Native
-          sendPdfToNative(pdfBase64, filename);
-
-          // --- TIMEOUT PENYELAMAT ---
-          // Jika Native App tidak membalas dalam 8 detik, kita matikan loading secara paksa
-          // Ini mencegah "mutar terus" jika bridge macet.
-          setTimeout(() => {
-             if (!statusBadge.classList.contains("hidden")) {
-                 statusBadge.classList.add("hidden");
-                 button.classList.remove("hidden");
-                 // Asumsi sukses jika tidak ada error balik, atau tampilkan pesan netral
-                 showToast("Permintaan download dikirim. Cek notifikasi/folder.", true);
-             }
-          }, 8000);
-
-        } catch (err) {
-          console.error("PDF Export Error:", err);
-          showToast(`Gagal: ${err.message}`, false);
-
-          // Restore style jika error
-          mainContainer.style.width = originalWidth;
-          mainContainer.style.transform = originalTransform;
-          mainContainer.style.margin = originalMargin;
-
-          statusBadge.classList.add("hidden");
-          button.classList.remove("hidden");
+          const pdfDataUri = await html2pdf().set(opt).from(el).output('datauristring');
+          const base64 = pdfDataUri.split(',')[1];
+          
+          if(window.ReactNativeWebView) {
+             window.ReactNativeWebView.postMessage(JSON.stringify({ action: "EXPORT_PDF", filename: opt.filename, data: base64 }));
+          } else {
+             html2pdf().set(opt).from(el).save();
+             resetView();
+          }
+        } catch(e) {
+          showToast("Gagal: " + e.message);
+          resetView();
         }
       }
+
+      function resetView() {
+        document.getElementById("pdf-status").classList.add("hidden");
+        document.getElementById("btn-download").classList.remove("hidden");
+        updateDimensions(false); 
+        renderInfo();
+        renderChart();
+      }
+
+      window.addEventListener("message", (e) => {
+         try { const d=JSON.parse(e.data); if(d.action==="PDF_SHARED" || d.action==="PDF_ERROR") resetView(); } catch(err){}
+      });
 
       fetchData();
     </script>
