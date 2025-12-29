@@ -1413,67 +1413,86 @@
       });
 
       // --- 3. EXPORT TO PDF FUNCTIONALITY ---
+      // --- 3. EXPORT TO PDF FUNCTIONALITY (AUTO-FIT A4) ---
       async function downloadPDF(button) {
         if (button.classList.contains("disabled")) return;
 
+        // 1. UI Loading
         button.classList.add("hidden");
         document.getElementById("pdf-status").classList.remove("hidden");
         document.getElementById("status-text").innerText = "Memproses PDF...";
 
-        try {
-          const element = document.getElementById("content-container");
+        // Ambil elemen
+        const element = document.getElementById("content-container");
 
-          // --- PERBAIKAN 1: Format Nama File (Partograf_Bunda_NamaPasien) ---
-          // Ambil nama pasien, jika kosong pakai "TanpaNama"
+        // 2. SIMPAN STYLE ASLI (Supaya tampilan HP tidak rusak permanen)
+        const originalWidth = element.style.width;
+        const originalTransform = element.style.transform;
+        const originalOrigin = element.style.transformOrigin;
+
+        try {
+          // --- STEP 1: FIX NAMA FILE ---
           const rawNama = processedData.pasien.nama || "TanpaNama";
-          // Bersihkan nama: Hanya huruf/angka, spasi jadi underscore
           const cleanNama = rawNama
             .replace(/[^a-zA-Z0-9 ]/g, "")
             .replace(/\s+/g, "_");
           const filename = `Partograf_Bunda_${cleanNama}.pdf`;
 
-          // --- PERBAIKAN 2: Konfigurasi Agar 1 Halaman Full (Tidak Terpotong) ---
+          // --- STEP 2: PAKSA PERKECIL (SHRINK) AGAR MUAT A4 ---
+          // Logika: Lebar konten 1100px. Lebar A4 ~790px.
+          // Kita kecilkan jadi 70% (scale 0.7) supaya muat masuk kertas.
+          element.style.width = "1100px"; // Kunci lebar internal agar grafik tidak hancur
+          element.style.transform = "scale(0.7)"; // Zoom out jadi 70%
+          element.style.transformOrigin = "top left"; // Mulai dari pojok kiri atas
+
+          // Config PDF
           const opt = {
-            margin: [5, 5, 5, 5], // Margin tipis (atas, kiri, bawah, kanan)
+            margin: [10, 5, 10, 5], // Margin aman (Atas, Kiri, Bawah, Kanan)
             filename: filename,
             image: { type: "jpeg", quality: 0.98 },
             html2canvas: {
-              scale: 2, // Kualitas tinggi
+              scale: 2, // Tetap resolusi tinggi (HD)
               useCORS: true,
               scrollY: 0,
-              // PENTING: windowWidth harus > dari lebar container (1100px)
-              // Ini mencegah konten terpotong horizontal
+              // PENTING: windowWidth harus match lebar asli sebelum diskala
               windowWidth: 1150,
             },
             jsPDF: {
               unit: "mm",
               format: "a4",
-              orientation: "landscape",
+              orientation: "portrait",
             },
-            // PENTING: Mencegah halaman terbelah dua
             pagebreak: { mode: "avoid-all" },
           };
 
           document.getElementById("status-text").innerText =
             "Mengekspor ke A4...";
 
-          // Generate PDF
+          // 3. GENERATE
           const pdfDataUri = await html2pdf()
             .set(opt)
             .from(element)
             .output("datauristring");
 
-          // Pastikan Murni Base64
-          const base64Data = pdfDataUri.split(",")[1];
+          // 4. KEMBALIKAN TAMPILAN (RESTORE) SECEPATNYA
+          // Kita kembalikan style sebelum kirim data ke native agar UI HP langsung normal
+          element.style.width = originalWidth;
+          element.style.transform = originalTransform;
+          element.style.transformOrigin = originalOrigin;
 
-          document.getElementById("status-text").innerText =
-            "Mengirim data ke Native...";
+          // 5. KIRIM DATA
+          const base64Data = pdfDataUri.split(",")[1];
+          document.getElementById("status-text").innerText = "Mengirim data...";
           sendPdfToNative(base64Data, filename);
         } catch (err) {
           console.error("PDF Export Error:", err);
-          showToast(`Gagal generate PDF: ${err.message}`, false);
+          showToast(`Gagal: ${err.message}`, false);
 
-          // Reset tombol jika gagal
+          // Jaga-jaga: Kembalikan style jika error
+          element.style.width = originalWidth;
+          element.style.transform = originalTransform;
+          element.style.transformOrigin = originalOrigin;
+
           document.getElementById("pdf-status").classList.add("hidden");
           button.classList.remove("hidden");
         }
