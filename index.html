@@ -468,10 +468,10 @@
               class="w-16 pl-2 flex flex-col justify-center gap-2 text-[10px] font-bold border-r border-transparent"
             >
               <div class="flex items-center gap-1">
-                <span class="text-lg leading-none">â€¢</span> Nadi
+                <span class="text-lg leading-none"></span> Nadi
               </div>
               <div class="flex items-center gap-1">
-                <span class="text-base leading-none">â†•</span> Tekanan<br />Darah
+                <span class="text-base leading-none"></span> Tekanan<br />Darah
               </div>
             </div>
             <div
@@ -1447,7 +1447,7 @@
 
           // Config PDF
           const opt = {
-            margin: [-20, -10, -10, 2], // Margin aman (Atas, Kiri, Bawah, Kanan)
+            margin: [0,0,0,0], // Margin aman (Atas, Kiri, Bawah, Kanan)
             filename: filename,
             image: { type: "jpeg", quality: 0.98 },
             html2canvas: {
