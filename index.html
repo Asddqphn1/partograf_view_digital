@@ -1412,8 +1412,7 @@
         }
       });
 
-      // --- 3. EXPORT TO PDF FUNCTIONALITY ---
-      // --- 3. EXPORT TO PDF FUNCTIONALITY (AUTO-FIT A4) ---
+      // --- 3. EXPORT TO PDF FUNCTIONALITY (FIX UKURAN A4) ---
       async function downloadPDF(button) {
         if (button.classList.contains("disabled")) return;
 
@@ -1424,38 +1423,42 @@
 
         // Ambil elemen
         const element = document.getElementById("content-container");
+        const mainContainer = element.querySelector('.main-container');
 
         // 2. SIMPAN STYLE ASLI (Supaya tampilan HP tidak rusak permanen)
-        const originalWidth = element.style.width;
-        const originalTransform = element.style.transform;
-        const originalOrigin = element.style.transformOrigin;
+        const originalContainerWidth = mainContainer.style.width;
+        const originalContainerMaxWidth = mainContainer.style.maxWidth;
+        const originalContainerMargin = mainContainer.style.margin;
 
         try {
-          // --- STEP 1: FIX NAMA FILE ---
+          // --- STEP 1: NAMA FILE ---
           const rawNama = processedData.pasien.nama || "TanpaNama";
           const cleanNama = rawNama
             .replace(/[^a-zA-Z0-9 ]/g, "")
             .replace(/\s+/g, "_");
           const filename = `Partograf_Bunda_${cleanNama}.pdf`;
 
-          // --- STEP 2: PAKSA PERKECIL (SHRINK) AGAR MUAT A4 ---
-          // Logika: Lebar konten 1100px. Lebar A4 ~790px.
-          // Kita kecilkan jadi 70% (scale 0.7) supaya muat masuk kertas.
-          element.style.width = "1100px"; // Kunci lebar internal agar grafik tidak hancur
-          element.style.transform = "scale(0.7)"; // Zoom out jadi 70%
-          element.style.transformOrigin = "top left"; // Mulai dari pojok kiri atas
+          // --- STEP 2: UBAH UKURAN CONTAINER JADI PAS A4 ---
+          // A4 Portrait width = 210mm ≈ 794px di 96 DPI
+          // Kita set 750px supaya ada ruang margin di kiri-kanan
+          mainContainer.style.width = "750px";
+          mainContainer.style.maxWidth = "750px";
+          mainContainer.style.margin = "0"; // Hilangkan margin auto
+
+          // Tunggu sebentar agar browser render ulang
+          await new Promise(resolve => setTimeout(resolve, 100));
 
           // Config PDF
           const opt = {
-            margin: [10, 5, 10, 5], // Margin aman (Atas, Kiri, Bawah, Kanan)
+            margin: [8, 8, 8, 8], // Margin tipis (mm)
             filename: filename,
-            image: { type: "jpeg", quality: 0.98 },
+            image: { type: "jpeg", quality: 0.95 },
             html2canvas: {
-              scale: 2, // Tetap resolusi tinggi (HD)
+              scale: 2.5, // Resolusi tinggi untuk print
               useCORS: true,
               scrollY: 0,
-              // PENTING: windowWidth harus match lebar asli sebelum diskala
-              windowWidth: 1150,
+              windowWidth: 750, // Match dengan width container
+              windowHeight: document.body.scrollHeight,
             },
             jsPDF: {
               unit: "mm",
@@ -1468,19 +1471,18 @@
           document.getElementById("status-text").innerText =
             "Mengekspor ke A4...";
 
-          // 3. GENERATE
+          // 3. GENERATE PDF
           const pdfDataUri = await html2pdf()
             .set(opt)
             .from(element)
             .output("datauristring");
 
-          // 4. KEMBALIKAN TAMPILAN (RESTORE) SECEPATNYA
-          // Kita kembalikan style sebelum kirim data ke native agar UI HP langsung normal
-          element.style.width = originalWidth;
-          element.style.transform = originalTransform;
-          element.style.transformOrigin = originalOrigin;
+          // 4. KEMBALIKAN UKURAN CONTAINER KE SEMULA
+          mainContainer.style.width = originalContainerWidth;
+          mainContainer.style.maxWidth = originalContainerMaxWidth;
+          mainContainer.style.margin = originalContainerMargin;
 
-          // 5. KIRIM DATA
+          // 5. KIRIM DATA KE NATIVE
           const base64Data = pdfDataUri.split(",")[1];
           document.getElementById("status-text").innerText = "Mengirim data...";
           sendPdfToNative(base64Data, filename);
@@ -1489,9 +1491,9 @@
           showToast(`Gagal: ${err.message}`, false);
 
           // Jaga-jaga: Kembalikan style jika error
-          element.style.width = originalWidth;
-          element.style.transform = originalTransform;
-          element.style.transformOrigin = originalOrigin;
+          mainContainer.style.width = originalContainerWidth;
+          mainContainer.style.maxWidth = originalContainerMaxWidth;
+          mainContainer.style.margin = originalContainerMargin;
 
           document.getElementById("pdf-status").classList.add("hidden");
           button.classList.remove("hidden");
