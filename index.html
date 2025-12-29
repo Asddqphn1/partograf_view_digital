@@ -1423,31 +1423,47 @@
         try {
           const element = document.getElementById("content-container");
 
-          // --- PERBAIKAN 1: Sanitasi Nama File ---
-          // Ganti semua karakter SELAIN huruf dan angka menjadi garis bawah (_)
-          const rawNoReg = processedData.pasien.noRegistrasi || "tanpa-nama";
-          const cleanNoReg = rawNoReg.replace(/[^a-zA-Z0-9]/g, "_");
-          const filename = `Partograf-${cleanNoReg}.pdf`;
+          // --- PERBAIKAN 1: Format Nama File (Partograf_Bunda_NamaPasien) ---
+          // Ambil nama pasien, jika kosong pakai "TanpaNama"
+          const rawNama = processedData.pasien.nama || "TanpaNama";
+          // Bersihkan nama: Hanya huruf/angka, spasi jadi underscore
+          const cleanNama = rawNama
+            .replace(/[^a-zA-Z0-9 ]/g, "")
+            .replace(/\s+/g, "_");
+          const filename = `Partograf_Bunda_${cleanNama}.pdf`;
 
+          // --- PERBAIKAN 2: Konfigurasi Agar 1 Halaman Full (Tidak Terpotong) ---
           const opt = {
-            margin: [5, 5, 5, 5],
+            margin: [5, 5, 5, 5], // Margin tipis (atas, kiri, bawah, kanan)
             filename: filename,
             image: { type: "jpeg", quality: 0.98 },
-            html2canvas: { scale: 2, useCORS: true },
-            jsPDF: { unit: "mm", format: "a4", orientation: "portrait" },
+            html2canvas: {
+              scale: 2, // Kualitas tinggi
+              useCORS: true,
+              scrollY: 0,
+              // PENTING: windowWidth harus > dari lebar container (1100px)
+              // Ini mencegah konten terpotong horizontal
+              windowWidth: 1150,
+            },
+            jsPDF: {
+              unit: "mm",
+              format: "a4",
+              orientation: "portrait",
+            },
+            // PENTING: Mencegah halaman terbelah dua
+            pagebreak: { mode: "avoid-all" },
           };
 
           document.getElementById("status-text").innerText =
             "Mengekspor ke A4...";
 
-          // Ambil Data URI
+          // Generate PDF
           const pdfDataUri = await html2pdf()
             .set(opt)
             .from(element)
             .output("datauristring");
 
-          // --- PERBAIKAN 2: Pastikan Murni Base64 ---
-          // Split berdasarkan koma. [0] adalah header, [1] adalah datanya.
+          // Pastikan Murni Base64
           const base64Data = pdfDataUri.split(",")[1];
 
           document.getElementById("status-text").innerText =
@@ -1456,6 +1472,8 @@
         } catch (err) {
           console.error("PDF Export Error:", err);
           showToast(`Gagal generate PDF: ${err.message}`, false);
+
+          // Reset tombol jika gagal
           document.getElementById("pdf-status").classList.add("hidden");
           button.classList.remove("hidden");
         }
