@@ -7,6 +7,7 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Tambahkan library html2pdf -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <style>
       body {
         font-family: "Arial", sans-serif;
@@ -1412,7 +1413,7 @@
         }
       });
 
-      // --- 3. EXPORT TO PDF FUNCTIONALITY (OPTIMIZED FOR F4 / ONE PAGE) ---
+      // --- 3. EXPORT TO PDF FUNCTIONALITY (METODE FOTO & PAKSA FIT F4) ---
       async function downloadPDF(button) {
         if (button.classList.contains("disabled")) return;
 
@@ -1421,14 +1422,8 @@
         document.getElementById("pdf-status").classList.remove("hidden");
         document.getElementById("status-text").innerText = "Memproses PDF...";
 
-        // Ambil elemen
         const element = document.getElementById("content-container");
-
-        // 2. SIMPAN STYLE ASLI
         const originalWidth = element.style.width;
-        const originalTransform = element.style.transform;
-        const originalOrigin = element.style.transformOrigin;
-        const originalMargin = element.style.margin; // Simpan margin asli juga
 
         try {
           // --- STEP 1: FIX NAMA FILE ---
@@ -1438,69 +1433,94 @@
             .replace(/\s+/g, "_");
           const filename = `Partograf_Bunda_${cleanNama}.pdf`;
 
-          // --- STEP 2: SETUP SKALA AGAR MUAT DI F4 ---
-          // Ukuran F4: 215mm x 330mm.
-          // Lebar Print Area (dikurangi margin 5mm kiri-kanan): ~205mm (~775px).
-          // Konten asli: 1100px.
-          // Scale ideal: 775 / 1100 = ~0.7. Jadi scale 0.7 Anda sudah pas.
-
-          // Paksa container agar statis saat capture
+          // --- STEP 2: KUNCI LEBAR KONTEN ---
+          // Kita kunci lebar div ke 1100px agar layout grafik tetap rapi saat difoto
           element.style.width = "1100px";
-          element.style.transform = "scale(0.7)";
-          element.style.transformOrigin = "top left";
-          element.style.margin = "0"; // Reset margin agar tidak geser
-
-          // Config PDF untuk F4 (Custom Size)
-          const opt = {
-            margin: [5, 5, 5, 5], // Margin tipis (5mm) agar area luas
-            filename: filename,
-            image: { type: "jpeg", quality: 0.98 },
-            html2canvas: {
-              scale: 2, // Resolusi tinggi (Retina)
-              useCORS: true,
-              scrollY: 0,
-              // PENTING: Set windowWidth sesuai lebar asli elemen SEBELUM scale
-              // agar canvas tidak memotong bagian kanan chart
-              windowWidth: 1100,
-            },
-            jsPDF: {
-              unit: "mm",
-              format: [215, 330], // UKURAN F4 (Custom Width & Height)
-              orientation: "portrait",
-            },
-            // INI KUNCINYA: Mencegah pemotongan halaman
-            pagebreak: { mode: ["avoid-all", "css", "legacy"] },
-          };
 
           document.getElementById("status-text").innerText =
-            "Mengekspor ke F4...";
+            "Mengambil Gambar...";
 
-          // 3. GENERATE
-          const pdfDataUri = await html2pdf()
-            .set(opt)
+          // --- STEP 3: AMBIL GAMBAR (CANVAS) ---
+          // Kita gunakan html2pdf HANYA untuk mengambil gambar (canvas), bukan generate PDF langsung.
+          // Ini menghindari logika pemotongan halaman otomatis library yang bikin error.
+          const canvas = await html2pdf()
             .from(element)
-            .output("datauristring");
+            .set({
+              html2canvas: {
+                scale: 2, // Resolusi tinggi (Retina) supaya teks tidak pecah
+                useCORS: true,
+                scrollY: 0,
+                windowWidth: 1100, // Pastikan canvas menangkap lebar penuh
+              },
+            })
+            .toCanvas()
+            .get("canvas");
 
-          // 4. KEMBALIKAN TAMPILAN (RESTORE)
-          element.style.width = originalWidth;
-          element.style.transform = originalTransform;
-          element.style.transformOrigin = originalOrigin;
-          element.style.margin = originalMargin;
+          // --- STEP 4: INISIALISASI PDF F4 MANUAL ---
+          // Kita cek akses ke jsPDF global (biasanya dibawa oleh bundle html2pdf)
+          const jsPDF = window.jspdf ? window.jspdf.jsPDF : window.jsPDF;
+          if (!jsPDF) {
+            throw new Error(
+              "Library jsPDF tidak terdeteksi. Pastikan html2pdf.bundle.js dimuat dengan benar."
+            );
+          }
 
-          // 5. KIRIM DATA KE NATIVE
+          // Buat PDF ukuran F4 (215mm x 330mm)
+          const pdf = new jsPDF({
+            orientation: "portrait",
+            unit: "mm",
+            format: [215, 330],
+          });
+
+          // --- STEP 5: HITUNG UKURAN AGAR PAS 1 HALAMAN (FIT TO PAGE) ---
+          const imgData = canvas.toDataURL("image/jpeg", 0.95);
+          const pdfWidth = 215; // Lebar F4
+          const pdfHeight = 330; // Tinggi F4
+          const margin = 5; // Margin 5mm biar aman print
+
+          const printWidth = pdfWidth - margin * 2;
+          const printHeight = pdfHeight - margin * 2;
+
+          const imgProps = pdf.getImageProperties(imgData);
+          const pdfRatio = printWidth / printHeight;
+          const imgRatio = imgProps.width / imgProps.height;
+
+          let finalW, finalH;
+
+          // Logika "Contain": Sesuaikan gambar agar masuk ke kertas tanpa terpotong
+          if (imgRatio > pdfRatio) {
+            // Gambar lebih lebar (gemuk), ikut lebar kertas
+            finalW = printWidth;
+            finalH = finalW / imgRatio;
+          } else {
+            // Gambar lebih tinggi (kurus), ikut tinggi kertas
+            finalH = printHeight;
+            finalW = finalH * imgRatio;
+          }
+
+          // Posisikan di tengah (Center)
+          const xPos = (pdfWidth - finalW) / 2;
+          const yPos = 5; // Jarak dari atas 5mm
+
+          // Tempel gambar ke PDF
+          pdf.addImage(imgData, "JPEG", xPos, yPos, finalW, finalH);
+
+          // --- STEP 6: OUTPUT DATA ---
+          const pdfDataUri = pdf.output("datauristring");
           const base64Data = pdfDataUri.split(",")[1];
+
+          // Restore Tampilan Asli
+          element.style.width = originalWidth;
+
+          // Kirim ke Native
           document.getElementById("status-text").innerText = "Mengirim data...";
           sendPdfToNative(base64Data, filename);
         } catch (err) {
           console.error("PDF Export Error:", err);
           showToast(`Gagal: ${err.message}`, false);
 
-          // Jaga-jaga: Kembalikan style jika error
+          // Restore jika error
           element.style.width = originalWidth;
-          element.style.transform = originalTransform;
-          element.style.transformOrigin = originalOrigin;
-          element.style.margin = originalMargin;
-
           document.getElementById("pdf-status").classList.add("hidden");
           button.classList.remove("hidden");
         }
