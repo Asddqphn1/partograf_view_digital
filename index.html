@@ -1412,7 +1412,7 @@
         }
       });
 
-      // --- 3. EXPORT TO PDF FUNCTIONALITY (FIX UKURAN A4) ---
+      // --- 3. EXPORT TO PDF FUNCTIONALITY (FAST VERSION) ---
       async function downloadPDF(button) {
         if (button.classList.contains("disabled")) return;
 
@@ -1421,79 +1421,89 @@
         document.getElementById("pdf-status").classList.remove("hidden");
         document.getElementById("status-text").innerText = "Memproses PDF...";
 
-        // Ambil elemen
         const element = document.getElementById("content-container");
         const mainContainer = element.querySelector('.main-container');
 
-        // 2. SIMPAN STYLE ASLI (Supaya tampilan HP tidak rusak permanen)
-        const originalContainerWidth = mainContainer.style.width;
-        const originalContainerMaxWidth = mainContainer.style.maxWidth;
-        const originalContainerMargin = mainContainer.style.margin;
+        // Simpan style asli
+        const originalWidth = mainContainer.style.width;
+        const originalMaxWidth = mainContainer.style.maxWidth;
+        const originalMargin = mainContainer.style.margin;
 
         try {
-          // --- STEP 1: NAMA FILE ---
+          // Nama file
           const rawNama = processedData.pasien.nama || "TanpaNama";
           const cleanNama = rawNama
             .replace(/[^a-zA-Z0-9 ]/g, "")
             .replace(/\s+/g, "_");
           const filename = `Partograf_Bunda_${cleanNama}.pdf`;
 
-          // --- STEP 2: UBAH UKURAN CONTAINER JADI PAS A4 ---
-          // A4 Portrait width = 210mm ≈ 794px di 96 DPI
-          // Kita set 750px supaya ada ruang margin di kiri-kanan
+          // Ubah ukuran ke A4
           mainContainer.style.width = "750px";
           mainContainer.style.maxWidth = "750px";
-          mainContainer.style.margin = "0"; // Hilangkan margin auto
+          mainContainer.style.margin = "0";
 
-          // Tunggu sebentar agar browser render ulang
-          await new Promise(resolve => setTimeout(resolve, 100));
+          // Tunggu render
+          await new Promise(resolve => setTimeout(resolve, 50));
 
-          // Config PDF
-          const opt = {
-            margin: [8, 8, 8, 8], // Margin tipis (mm)
-            filename: filename,
-            image: { type: "jpeg", quality: 0.95 },
-            html2canvas: {
-              scale: 2.5, // Resolusi tinggi untuk print
-              useCORS: true,
-              scrollY: 0,
-              windowWidth: 750, // Match dengan width container
-              windowHeight: document.body.scrollHeight,
-            },
-            jsPDF: {
-              unit: "mm",
-              format: "a4",
-              orientation: "portrait",
-            },
-            pagebreak: { mode: "avoid-all" },
-          };
+          document.getElementById("status-text").innerText = "Mengambil gambar...";
 
-          document.getElementById("status-text").innerText =
-            "Mengekspor ke A4...";
+          // Capture dengan html2canvas (lebih cepat dari html2pdf)
+          const canvas = await html2canvas(element, {
+            scale: 2,
+            useCORS: true,
+            logging: false,
+            windowWidth: 750,
+            scrollY: 0,
+            backgroundColor: '#ffffff'
+          });
 
-          // 3. GENERATE PDF
-          const pdfDataUri = await html2pdf()
-            .set(opt)
-            .from(element)
-            .output("datauristring");
+          document.getElementById("status-text").innerText = "Membuat PDF...";
 
-          // 4. KEMBALIKAN UKURAN CONTAINER KE SEMULA
-          mainContainer.style.width = originalContainerWidth;
-          mainContainer.style.maxWidth = originalContainerMaxWidth;
-          mainContainer.style.margin = originalContainerMargin;
+          // Kembalikan ukuran SEGERA setelah capture
+          mainContainer.style.width = originalWidth;
+          mainContainer.style.maxWidth = originalMaxWidth;
+          mainContainer.style.margin = originalMargin;
 
-          // 5. KIRIM DATA KE NATIVE
-          const base64Data = pdfDataUri.split(",")[1];
+          // Buat PDF dengan jsPDF
+          const { jsPDF } = window.jspdf;
+          const imgData = canvas.toDataURL('image/jpeg', 0.95);
+          
+          // A4 size dalam mm
+          const pdfWidth = 210;
+          const pdfHeight = 297;
+          
+          // Hitung proporsi
+          const imgWidth = canvas.width;
+          const imgHeight = canvas.height;
+          const ratio = imgWidth / imgHeight;
+          
+          // Fit ke A4 dengan margin
+          const margin = 8;
+          const contentWidth = pdfWidth - (margin * 2);
+          const contentHeight = contentWidth / ratio;
+          
+          const pdf = new jsPDF({
+            orientation: contentHeight > (pdfHeight - margin * 2) ? 'portrait' : 'portrait',
+            unit: 'mm',
+            format: 'a4'
+          });
+
+          pdf.addImage(imgData, 'JPEG', margin, margin, contentWidth, contentHeight, '', 'FAST');
+
+          // Convert ke base64
+          const pdfBase64 = pdf.output('datauristring').split(',')[1];
+
           document.getElementById("status-text").innerText = "Mengirim data...";
-          sendPdfToNative(base64Data, filename);
+          sendPdfToNative(pdfBase64, filename);
+
         } catch (err) {
           console.error("PDF Export Error:", err);
           showToast(`Gagal: ${err.message}`, false);
 
-          // Jaga-jaga: Kembalikan style jika error
-          mainContainer.style.width = originalContainerWidth;
-          mainContainer.style.maxWidth = originalContainerMaxWidth;
-          mainContainer.style.margin = originalContainerMargin;
+          // Restore style
+          mainContainer.style.width = originalWidth;
+          mainContainer.style.maxWidth = originalMaxWidth;
+          mainContainer.style.margin = originalMargin;
 
           document.getElementById("pdf-status").classList.add("hidden");
           button.classList.remove("hidden");
