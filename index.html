@@ -885,7 +885,7 @@
               i: chartIndex,
               v: c.pembukaan_servik,
             });
-          if (c.penurunan_kepala)
+          if (c.penurunan_kepala !== null && c.penurunan_kepala !== undefined)
             processedData.penurunan.push({
               i: chartIndex,
               v: c.penurunan_kepala,
@@ -930,28 +930,33 @@
           // PRIORITAS 1: Cek Data Stopwatch (Array Detail)
           // Kita prioritaskan ini agar arsirannya akurat kalau user pakai stopwatch
           if (Array.isArray(c.kontraksi) && c.kontraksi.length > 0) {
-             frekuensiFinal = c.kontraksi.length;
-             let maxDur = 0;
-             c.kontraksi.forEach((k) => {
-               // FIX PENTING: Ganti Spasi dengan T agar terbaca di semua browser/webview
-               // Ini yang kemarin bikin durasinya 0 terus
-               const sStr = k.waktu_mulai ? k.waktu_mulai.replace(" ", "T") : "";
-               const eStr = k.waktu_selesai ? k.waktu_selesai.replace(" ", "T") : "";
-               
-               if(sStr && eStr) {
-                   const start = new Date(sStr);
-                   const end = new Date(eStr);
-                   const dur = (end - start) / 1000;
-                   // Validasi agar tidak NaN
-                   if (!isNaN(dur) && dur > maxDur) maxDur = dur;
-               }
-             });
-             durasiFinal = maxDur;
+            frekuensiFinal = c.kontraksi.length;
+            let maxDur = 0;
+            c.kontraksi.forEach((k) => {
+              // FIX PENTING: Ganti Spasi dengan T agar terbaca di semua browser/webview
+              // Ini yang kemarin bikin durasinya 0 terus
+              const sStr = k.waktu_mulai ? k.waktu_mulai.replace(" ", "T") : "";
+              const eStr = k.waktu_selesai
+                ? k.waktu_selesai.replace(" ", "T")
+                : "";
+
+              if (sStr && eStr) {
+                const start = new Date(sStr);
+                const end = new Date(eStr);
+                const dur = (end - start) / 1000;
+                // Validasi agar tidak NaN
+                if (!isNaN(dur) && dur > maxDur) maxDur = dur;
+              }
+            });
+            durasiFinal = maxDur;
           }
           // PRIORITAS 2: Input Manual (Backup)
-          else if (c.kontraksi_frekuensi !== null && c.kontraksi_frekuensi !== undefined) {
-             frekuensiFinal = parseInt(c.kontraksi_frekuensi);
-             durasiFinal = c.kontraksi_durasi ? parseInt(c.kontraksi_durasi) : 0;
+          else if (
+            c.kontraksi_frekuensi !== null &&
+            c.kontraksi_frekuensi !== undefined
+          ) {
+            frekuensiFinal = parseInt(c.kontraksi_frekuensi);
+            durasiFinal = c.kontraksi_durasi ? parseInt(c.kontraksi_durasi) : 0;
           }
 
           // Push ke data grafik jika ada data valid
@@ -1272,16 +1277,21 @@
           svg += `<line x1="0" y1="${y}" x2="${CHART_AREA_WIDTH}" y2="${y}" class="grid-line" />`;
         }
         d.suhu.forEach((item) => {
-          let x = item.i * COL_W + COL_W / 2;
+          // GUNAKAN Math.floor() agar data jam 21.30 tetap masuk di kotak kolom 21.00
+          let x = Math.floor(item.i) * COL_W + COL_W / 2;
+
           svg += `<text x="${x}" y="${
             currentY + UNIT_H / 2 + 4
           }" text-anchor="middle" class="data-text text-blue-800">${
             item.v
           }</text>`;
         });
+
         d.urine.forEach((item) => {
           let uY = currentY + SUHU_H;
-          let x = item.i * COL_W + COL_W / 2;
+          // GUNAKAN Math.floor() di sini juga
+          let x = Math.floor(item.i) * COL_W + COL_W / 2;
+
           if (item.type === "protein")
             svg += `<text x="${x}" y="${
               uY + 0.5 * UNIT_H + 4
