@@ -1412,8 +1412,7 @@
         }
       });
 
-      // --- 3. EXPORT TO PDF FUNCTIONALITY ---
-      // --- 3. EXPORT TO PDF FUNCTIONALITY (AUTO-FIT A4) ---
+      // --- 3. EXPORT TO PDF FUNCTIONALITY (OPTIMIZED FOR F4 / ONE PAGE) ---
       async function downloadPDF(button) {
         if (button.classList.contains("disabled")) return;
 
@@ -1425,10 +1424,11 @@
         // Ambil elemen
         const element = document.getElementById("content-container");
 
-        // 2. SIMPAN STYLE ASLI (Supaya tampilan HP tidak rusak permanen)
+        // 2. SIMPAN STYLE ASLI
         const originalWidth = element.style.width;
         const originalTransform = element.style.transform;
         const originalOrigin = element.style.transformOrigin;
+        const originalMargin = element.style.margin; // Simpan margin asli juga
 
         try {
           // --- STEP 1: FIX NAMA FILE ---
@@ -1438,35 +1438,42 @@
             .replace(/\s+/g, "_");
           const filename = `Partograf_Bunda_${cleanNama}.pdf`;
 
-          // --- STEP 2: PAKSA PERKECIL (SHRINK) AGAR MUAT A4 ---
-          // Logika: Lebar konten 1100px. Lebar A4 ~790px.
-          // Kita kecilkan jadi 70% (scale 0.7) supaya muat masuk kertas.
-          element.style.width = "1100px"; // Kunci lebar internal agar grafik tidak hancur
-          element.style.transform = "scale(0.7)"; // Zoom out jadi 70%
-          element.style.transformOrigin = "top left"; // Mulai dari pojok kiri atas
+          // --- STEP 2: SETUP SKALA AGAR MUAT DI F4 ---
+          // Ukuran F4: 215mm x 330mm.
+          // Lebar Print Area (dikurangi margin 5mm kiri-kanan): ~205mm (~775px).
+          // Konten asli: 1100px.
+          // Scale ideal: 775 / 1100 = ~0.7. Jadi scale 0.7 Anda sudah pas.
 
-          // Config PDF
+          // Paksa container agar statis saat capture
+          element.style.width = "1100px";
+          element.style.transform = "scale(0.7)";
+          element.style.transformOrigin = "top left";
+          element.style.margin = "0"; // Reset margin agar tidak geser
+
+          // Config PDF untuk F4 (Custom Size)
           const opt = {
-            margin: [0,0,0,0], // Margin aman (Atas, Kiri, Bawah, Kanan)
+            margin: [5, 5, 5, 5], // Margin tipis (5mm) agar area luas
             filename: filename,
             image: { type: "jpeg", quality: 0.98 },
             html2canvas: {
-              scale: 2, // Tetap resolusi tinggi (HD)
+              scale: 2, // Resolusi tinggi (Retina)
               useCORS: true,
               scrollY: 0,
-              // PENTING: windowWidth harus match lebar asli sebelum diskala
-              windowWidth: 1150,
+              // PENTING: Set windowWidth sesuai lebar asli elemen SEBELUM scale
+              // agar canvas tidak memotong bagian kanan chart
+              windowWidth: 1100,
             },
             jsPDF: {
               unit: "mm",
-              format: "a4",
+              format: [215, 330], // UKURAN F4 (Custom Width & Height)
               orientation: "portrait",
             },
-            pagebreak: { mode: "avoid-all" },
+            // INI KUNCINYA: Mencegah pemotongan halaman
+            pagebreak: { mode: ["avoid-all", "css", "legacy"] },
           };
 
           document.getElementById("status-text").innerText =
-            "Mengekspor ke A4...";
+            "Mengekspor ke F4...";
 
           // 3. GENERATE
           const pdfDataUri = await html2pdf()
@@ -1474,13 +1481,13 @@
             .from(element)
             .output("datauristring");
 
-          // 4. KEMBALIKAN TAMPILAN (RESTORE) SECEPATNYA
-          // Kita kembalikan style sebelum kirim data ke native agar UI HP langsung normal
+          // 4. KEMBALIKAN TAMPILAN (RESTORE)
           element.style.width = originalWidth;
           element.style.transform = originalTransform;
           element.style.transformOrigin = originalOrigin;
+          element.style.margin = originalMargin;
 
-          // 5. KIRIM DATA
+          // 5. KIRIM DATA KE NATIVE
           const base64Data = pdfDataUri.split(",")[1];
           document.getElementById("status-text").innerText = "Mengirim data...";
           sendPdfToNative(base64Data, filename);
@@ -1492,6 +1499,7 @@
           element.style.width = originalWidth;
           element.style.transform = originalTransform;
           element.style.transformOrigin = originalOrigin;
+          element.style.margin = originalMargin;
 
           document.getElementById("pdf-status").classList.add("hidden");
           button.classList.remove("hidden");
