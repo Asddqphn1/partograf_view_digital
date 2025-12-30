@@ -1241,29 +1241,41 @@
         });
         currentY += KONTRAKSI_H;
 
-        // --- RENDER AREA OKSITOSIN ---
+        // --- RENDER AREA OKSITOSIN (REVISI GRID) ---
         // 1. Garis Batas Atas Tebal
         svg += `<line x1="0" y1="${currentY}" x2="${CHART_AREA_WIDTH}" y2="${currentY}" class="grid-line-thick" />`;
 
         // 2. Garis Horizontal (Pemisah baris U/L dan Tetes)
-        // Kita butuh 2 baris, jadi loop 2 kali
         for (let i = 1; i <= OXYTOCIN_ROWS; i++) {
           let y = currentY + i * UNIT_H;
           svg += `<line x1="0" y1="${y}" x2="${CHART_AREA_WIDTH}" y2="${y}" class="grid-line" />`;
         }
 
-        // 3. Garis Vertikal (Grid Waktu) - Samakan dengan grid chart lain
+        // 3. Garis Vertikal (Grid Waktu - DISAMAKAN DENGAN KONTRAKSI)
         for (let i = 0; i <= COLS; i++) {
           let x = i * COL_W;
+          
+          // Garis Major (Setiap Jam - Tebal/Hitam)
           svg += `<line x1="${x}" y1="${currentY}" x2="${x}" y2="${currentY + OXYTOCIN_H}" class="grid-line-major" />`;
+          
+          // Garis Minor (Setiap 30 Menit - Tipis/Abu) - INI YANG KEMARIN HILANG
+          if (i < COLS) {
+            let xHalf = x + UNIT_W; // Geser setengah kolom
+            svg += `<line x1="${xHalf}" y1="${currentY}" x2="${xHalf}" y2="${currentY + OXYTOCIN_H}" class="grid-line-minor" />`;
+          }
         }
 
         // 4. Tampilkan Teks Data
         d.oxytocin.forEach((item) => {
-          // Posisikan X di tengah kolom
-          let x = Math.floor(item.i) * COL_W + COL_W / 2;
+          // LOGIKA POSISI BARU: Sesuaikan dengan kotak kecil (30 menit)
+          // item.i sekarang adalah index per 30 menit (karena logika fix data sebelumnya)
+          // Kita kali dengan lebar kotak kecil (UNIT_W)
           
-          // Tampilkan Oksitosin (U/L) - Font kecil (9px) biar muat kalau teks panjang
+          // UNIT_W = Lebar 30 menit. COL_W = Lebar 1 Jam.
+          // Rumus: (Index * LebarKotakKecil) + SetengahKotakKecil (biar center)
+          let x = (item.i * UNIT_W) + (UNIT_W / 2); 
+          
+          // Tampilkan Oksitosin (U/L)
           if (item.amount && item.amount !== "-") {
             svg += `<text x="${x}" y="${currentY + (UNIT_H/2) + 4}" text-anchor="middle" class="data-text text-blue-800" font-size="9">${item.amount}</text>`;
           }
