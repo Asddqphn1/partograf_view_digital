@@ -582,6 +582,7 @@
         ketuban: [],
         penyusupan: [],
         suhu: [],
+        obat: [],
         urine: [],
         waktuLabels: {},
         infoLahir: null,
@@ -905,6 +906,12 @@
             processedData.ketuban.push({ i: chartIndex, val: c.air_ketuban });
           if (c.molase)
             processedData.penyusupan.push({ i: chartIndex, val: c.molase });
+          if (c.obat_cairan) {
+            processedData.obat.push({
+              i: chartIndex,
+              val: c.obat_cairan
+            });
+          }
           if (c.protein)
             processedData.urine.push({
               i: chartIndex,
@@ -1216,12 +1223,35 @@
         }" x2="${CHART_AREA_WIDTH}" y2="${
           currentY + OBAT_H
         }" class="grid-line" />`;
+        
         for (let i = 0; i <= COLS; i++) {
           let x = i * COL_W;
           svg += `<line x1="${x}" y1="${currentY}" x2="${x}" y2="${
             currentY + OBAT_H
           }" class="grid-line-major" />`;
         }
+
+        // --- KODE BARU UNTUK MENAMPILKAN TEKS OBAT ---
+        d.obat.forEach((item) => {
+          // Snap ke kolom (Math.floor) lalu ambil tengahnya
+          let x = Math.floor(item.i) * COL_W + COL_W / 2;
+          
+          // Mulai tulis dari bawah kotak obat, naik ke atas
+          let yBase = currentY + OBAT_H - 5; 
+
+          // Render Text dengan Rotasi -90 derajat (Vertikal)
+          svg += `<text x="${x}" y="${yBase}" 
+                  transform="rotate(-90 ${x},${yBase})" 
+                  font-family="sans-serif"
+                  font-size="11" 
+                  font-weight="bold" 
+                  fill="#1e40af" 
+                  text-anchor="start">
+                  ${item.val}
+                  </text>`;
+        });
+        // ---------------------------------------------
+
         currentY += OBAT_H;
 
         // 7. VITAL SIGNS
