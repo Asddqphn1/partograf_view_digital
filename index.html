@@ -924,11 +924,11 @@
             processedData.ketuban.push({ i: chartIndex, val: c.air_ketuban });
           if (c.molase)
             processedData.penyusupan.push({ i: chartIndex, val: c.molase });
-          if (c.oksitosin || c.total_tetes) {
+          if (c.oksitosin || (c.total_tetes !== null && c.total_tetes !== undefined)) {
             processedData.oxytocin.push({
-              i: chartIndex,
-              amount: c.oksitosin || "-", // Unit (misal: "10 U")
-              drops: c.total_tetes || "-", // Tetesan (misal: "20")
+              i: chartIndex, // Pakai index waktu yang sudah ada (jangan diubah)
+              amount: c.oksitosin ? c.oksitosin : "-", // Teks Oksitosin
+              drops: (c.total_tetes !== null && c.total_tetes !== undefined) ? c.total_tetes : "-" // Angka Tetes
             });
           }
           if (c.obat_cairan) {
@@ -1241,49 +1241,40 @@
         });
         currentY += KONTRAKSI_H;
 
+        // --- RENDER AREA OKSITOSIN ---
+        // 1. Garis Batas Atas Tebal
         svg += `<line x1="0" y1="${currentY}" x2="${CHART_AREA_WIDTH}" y2="${currentY}" class="grid-line-thick" />`;
 
-        // Grid Horizontal & Data
+        // 2. Garis Horizontal (Pemisah baris U/L dan Tetes)
+        // Kita butuh 2 baris, jadi loop 2 kali
         for (let i = 1; i <= OXYTOCIN_ROWS; i++) {
           let y = currentY + i * UNIT_H;
-          // Garis horizontal tipis antar baris
           svg += `<line x1="0" y1="${y}" x2="${CHART_AREA_WIDTH}" y2="${y}" class="grid-line" />`;
         }
 
-        // Grid Vertikal (Major)
+        // 3. Garis Vertikal (Grid Waktu) - Samakan dengan grid chart lain
         for (let i = 0; i <= COLS; i++) {
           let x = i * COL_W;
-          svg += `<line x1="${x}" y1="${currentY}" x2="${x}" y2="${
-            currentY + OXYTOCIN_H
-          }" class="grid-line-major" />`;
+          svg += `<line x1="${x}" y1="${currentY}" x2="${x}" y2="${currentY + OXYTOCIN_H}" class="grid-line-major" />`;
         }
 
-        // Render Data Teks Oksitosin
+        // 4. Tampilkan Teks Data
         d.oxytocin.forEach((item) => {
-          // Posisikan di tengah kolom (gunakan Math.floor agar rapi per 30 menit)
+          // Posisikan X di tengah kolom
           let x = Math.floor(item.i) * COL_W + COL_W / 2;
-
-          // Baris 1: Amount (U/L)
+          
+          // Tampilkan Oksitosin (U/L) - Font kecil (9px) biar muat kalau teks panjang
           if (item.amount && item.amount !== "-") {
-            svg += `<text x="${x}" y="${
-              currentY + UNIT_H / 2 + 4
-            }" text-anchor="middle" class="data-text text-blue-800">${
-              item.amount
-            }</text>`;
+            svg += `<text x="${x}" y="${currentY + (UNIT_H/2) + 4}" text-anchor="middle" class="data-text text-blue-800" font-size="9">${item.amount}</text>`;
           }
-
-          // Baris 2: Drops (Tetes/menit)
+          
+          // Tampilkan Tetesan (Drops)
           if (item.drops && item.drops !== "-") {
-            svg += `<text x="${x}" y="${
-              currentY + UNIT_H + UNIT_H / 2 + 4
-            }" text-anchor="middle" class="data-text text-blue-800">${
-              item.drops
-            }</text>`;
+            svg += `<text x="${x}" y="${currentY + UNIT_H + (UNIT_H/2) + 4}" text-anchor="middle" class="data-text text-blue-800">${item.drops}</text>`;
           }
         });
 
         currentY += OXYTOCIN_H;
-
         // 6. OBAT
         svg += `<line x1="0" y1="${currentY}" x2="${CHART_AREA_WIDTH}" y2="${currentY}" class="grid-line-thick" />`;
         svg += `<line x1="0" y1="${
