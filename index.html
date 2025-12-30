@@ -456,6 +456,19 @@
             ></div>
           </div>
           <div
+            id="label-oxytocin-area"
+            class="relative w-full border-b border-black flex flex-col font-bold text-[10px]"
+          >
+            <div class="flex-1 flex items-center justify-end pr-2 relative">
+              Oxytocin U/L
+            </div>
+            <div
+              class="flex-1 flex items-center justify-end pr-2 border-t border-gray-300"
+            >
+              Tetes/mnt
+            </div>
+          </div>
+          <div
             id="label-obat-area"
             class="relative w-full border-b border-black flex items-center justify-end pr-2 text-[10px] font-bold leading-tight text-right"
           >
@@ -539,6 +552,8 @@
       const TIME_H = 65;
       const KONTRAKSI_ROWS = 5;
       const KONTRAKSI_H = KONTRAKSI_ROWS * UNIT_H;
+      const OXYTOCIN_ROWS = 2;
+      const OXYTOCIN_H = OXYTOCIN_ROWS * UNIT_H;
       const OBAT_H = 80;
       const VITALS_STEPS = 12;
       const VITALS_H = VITALS_STEPS * UNIT_H;
@@ -552,6 +567,7 @@
         CER_H +
         TIME_H +
         KONTRAKSI_H +
+        OXYTOCIN_H +
         OBAT_H +
         VITALS_H +
         SUHU_H +
@@ -564,6 +580,7 @@
       setH("label-cervix-area", CER_H);
       setH("label-time-area", TIME_H);
       setH("label-kontraksi-area", KONTRAKSI_H);
+      setH("label-oxytocin-area", OXYTOCIN_H);
       setH("label-obat-area", OBAT_H);
       setH("label-vitals-area", VITALS_H);
       setH("label-suhu-area", SUHU_H);
@@ -582,6 +599,7 @@
         ketuban: [],
         penyusupan: [],
         suhu: [],
+        oxytocin: [],
         obat: [],
         urine: [],
         waktuLabels: {},
@@ -906,10 +924,17 @@
             processedData.ketuban.push({ i: chartIndex, val: c.air_ketuban });
           if (c.molase)
             processedData.penyusupan.push({ i: chartIndex, val: c.molase });
+          if (c.oksitosin || c.total_tetes) {
+            processedData.oxytocin.push({
+              i: chartIndex,
+              amount: c.oksitosin || "-", // Unit (misal: "10 U")
+              drops: c.total_tetes || "-", // Tetesan (misal: "20")
+            });
+          }
           if (c.obat_cairan) {
             processedData.obat.push({
               i: chartIndex,
-              val: c.obat_cairan
+              val: c.obat_cairan,
             });
           }
           if (c.protein)
@@ -1216,6 +1241,49 @@
         });
         currentY += KONTRAKSI_H;
 
+        svg += `<line x1="0" y1="${currentY}" x2="${CHART_AREA_WIDTH}" y2="${currentY}" class="grid-line-thick" />`;
+
+        // Grid Horizontal & Data
+        for (let i = 1; i <= OXYTOCIN_ROWS; i++) {
+          let y = currentY + i * UNIT_H;
+          // Garis horizontal tipis antar baris
+          svg += `<line x1="0" y1="${y}" x2="${CHART_AREA_WIDTH}" y2="${y}" class="grid-line" />`;
+        }
+
+        // Grid Vertikal (Major)
+        for (let i = 0; i <= COLS; i++) {
+          let x = i * COL_W;
+          svg += `<line x1="${x}" y1="${currentY}" x2="${x}" y2="${
+            currentY + OXYTOCIN_H
+          }" class="grid-line-major" />`;
+        }
+
+        // Render Data Teks Oksitosin
+        d.oxytocin.forEach((item) => {
+          // Posisikan di tengah kolom (gunakan Math.floor agar rapi per 30 menit)
+          let x = Math.floor(item.i) * COL_W + COL_W / 2;
+
+          // Baris 1: Amount (U/L)
+          if (item.amount && item.amount !== "-") {
+            svg += `<text x="${x}" y="${
+              currentY + UNIT_H / 2 + 4
+            }" text-anchor="middle" class="data-text text-blue-800">${
+              item.amount
+            }</text>`;
+          }
+
+          // Baris 2: Drops (Tetes/menit)
+          if (item.drops && item.drops !== "-") {
+            svg += `<text x="${x}" y="${
+              currentY + UNIT_H + UNIT_H / 2 + 4
+            }" text-anchor="middle" class="data-text text-blue-800">${
+              item.drops
+            }</text>`;
+          }
+        });
+
+        currentY += OXYTOCIN_H;
+
         // 6. OBAT
         svg += `<line x1="0" y1="${currentY}" x2="${CHART_AREA_WIDTH}" y2="${currentY}" class="grid-line-thick" />`;
         svg += `<line x1="0" y1="${
@@ -1223,7 +1291,7 @@
         }" x2="${CHART_AREA_WIDTH}" y2="${
           currentY + OBAT_H
         }" class="grid-line" />`;
-        
+
         for (let i = 0; i <= COLS; i++) {
           let x = i * COL_W;
           svg += `<line x1="${x}" y1="${currentY}" x2="${x}" y2="${
@@ -1235,9 +1303,9 @@
         d.obat.forEach((item) => {
           // Snap ke kolom (Math.floor) lalu ambil tengahnya
           let x = Math.floor(item.i) * COL_W + COL_W / 2;
-          
+
           // Mulai tulis dari bawah kotak obat, naik ke atas
-          let yBase = currentY + OBAT_H - 5; 
+          let yBase = currentY + OBAT_H - 5;
 
           // Render Text dengan Rotasi -90 derajat (Vertikal)
           svg += `<text x="${x}" y="${yBase}" 
