@@ -1265,15 +1265,15 @@
           }
         }
 
-        // 4. Tampilkan Teks Data
+        // 4. Tampilkan Teks Data (REVISI POSISI)
         d.oxytocin.forEach((item) => {
-          // LOGIKA POSISI BARU: Sesuaikan dengan kotak kecil (30 menit)
-          // item.i sekarang adalah index per 30 menit (karena logika fix data sebelumnya)
-          // Kita kali dengan lebar kotak kecil (UNIT_W)
+          // FIX: item.i adalah satuan JAM (misal 1.6 jam).
+          // Kita harus ubah ke index kotak kecil (30 menit).
+          // Rumusnya: Jam * 2, lalu di-floor biar masuk ke kotak yang tepat.
+          let slotIndex = Math.floor(item.i * 2); 
           
-          // UNIT_W = Lebar 30 menit. COL_W = Lebar 1 Jam.
-          // Rumus: (Index * LebarKotakKecil) + SetengahKotakKecil (biar center)
-          let x = (item.i * UNIT_W) + (UNIT_W / 2); 
+          // Hitung posisi X: (Index Kotak * Lebar Kotak) + (Setengah Lebar Kotak untuk centering)
+          let x = (slotIndex * UNIT_W) + (UNIT_W / 2); 
           
           // Tampilkan Oksitosin (U/L)
           if (item.amount && item.amount !== "-") {
@@ -1285,7 +1285,6 @@
             svg += `<text x="${x}" y="${currentY + UNIT_H + (UNIT_H/2) + 4}" text-anchor="middle" class="data-text text-blue-800">${item.drops}</text>`;
           }
         });
-
         currentY += OXYTOCIN_H;
         // 6. OBAT
         svg += `<line x1="0" y1="${currentY}" x2="${CHART_AREA_WIDTH}" y2="${currentY}" class="grid-line-thick" />`;
